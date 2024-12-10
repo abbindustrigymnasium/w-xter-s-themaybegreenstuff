@@ -1,0 +1,6 @@
+[database]
+user = "dbUser"
+pwd = "safePassword"
+
+[server]
+port = 3000

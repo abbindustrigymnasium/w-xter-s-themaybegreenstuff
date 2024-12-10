@@ -1,47 +1,39 @@
-<script setup>
-import HelloWorld from './components/HelloWorld.vue'
-import TheWelcome from './components/TheWelcome.vue'
-</script>
-
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-    </div>
-  </header>
-
-  <main>
-    <TheWelcome />
-  </main>
+  <div id="app">
+    <header>
+      <h1>Login To Observe The Green Stuff</h1>
+    </header>
+    <main>
+      <!-- Using the LoginPage component -->
+      <LoginPage />
+    </main>
+  </div>
 </template>
 
-<style scoped>
+<script>
+import LoginPage from "./components/LoginPage.vue";
+
+export default {
+  name: "App",
+  components: {
+    LoginPage, // Register the LoginPage component
+  },
+};
+</script>
+
+<style>
+/* Basic App styles */
+#app {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  color: #333;
+  margin-top: 50px;
+}
 header {
-  line-height: 1.5;
+  margin-bottom: 20px;
 }
-
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
+main {
+  display: flex;
+  justify-content: center;
 }
 </style>
