@@ -5,18 +5,20 @@
     </header>
     <main>
       <!-- Using the LoginPage component -->
-      <LoginPage />
+      <MainPage />
     </main>
   </div>
 </template>
 
 <script>
 import LoginPage from "./components/LoginPage.vue";
+import MainPage from "./components/MainPage.vue";
 
 export default {
   name: "App",
   components: {
     LoginPage, // Register the LoginPage component
+    MainPage, // Register the MainPage component
   },
 };
 </script>
