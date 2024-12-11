@@ -79,9 +79,11 @@ app.get('/push_data', (req, res) => {
 
 
 
-// Start the server
-
+/**
+ * @abstract Function to run the server at the specified port.
+ */
 const PORT = 5000;
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });
+
