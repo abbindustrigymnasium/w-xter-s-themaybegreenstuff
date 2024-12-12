@@ -1,24 +1,26 @@
 <template>
   <div id="app">
-    <header>
-      <h1>Login To Observe The Green Stuff</h1>
-    </header>
-    <main>
-      <!-- Using the LoginPage component -->
-      <MainPage />
-    </main>
+    <D3LineChart :data="chartData" />
   </div>
 </template>
 
 <script>
-import LoginPage from "./components/LoginPage.vue";
-import MainPage from "./components/MainPage.vue";
+import D3LineChart from "./components/D3LineChart.vue";
 
 export default {
   name: "App",
   components: {
-    LoginPage, // Register the LoginPage component
-    MainPage, // Register the MainPage component
+    D3LineChart,
+  },
+  data() {
+    return {
+      chartData: [
+        { date: new Date("2023-01-01"), temperature: 32 },
+        { date: new Date("2023-01-02"), temperature: 35 },
+        { date: new Date("2023-01-03"), temperature: 28 },
+        { date: new Date("2023-01-04"), temperature: 30 },
+      ],
+    };
   },
 };
 </script>

@@ -1,5 +1,18 @@
 /// @TODO: move the sensitive data in this file to a file incluede in a .gitignore asap
 
+/*
+
+Dependencies:
+-   crypto: for generating random secret keys
+-   mysql: for connecting to mariaDB
+-   cors: for enabling cross-origin requests
+-   axios: for making HTTP requests
+
+-   ws: for websocket communication
+
+
+*/
+
 /* includes */
 const crypto = require('crypto');
 const express = require('express');
