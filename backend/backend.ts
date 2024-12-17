@@ -15,14 +15,23 @@ const server = createServer((req: any, res: any) => {
 // Create a WebSocket server using the same HTTP server
 const wss = new WebSocketServer({ server });
 
+
+
+function sendToAll(message: string) {
+    wss.clients.forEach((client: any) => {
+        if (client.readyState === client.OPEN) {
+            client.send(message);
+        }
+    });
+}
+
 // Handle WebSocket connections
 wss.on('connection', (ws: any) => {
     console.log('New WebSocket connection established.');
 
     // Handle incoming messages from the client
     ws.on('message', (message: any) => {
-        console.log(`Received: ${message}`);
-        ws.send(`Server received: ${message}`);
+        sendToAll(message);
     });
 
     // Send a welcome message to the client
