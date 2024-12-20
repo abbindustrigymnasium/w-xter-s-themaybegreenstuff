@@ -1,42 +1,20 @@
 <template>
-  <div class="q-pa-md">
-    <div class="q-gutter-y-md column" style="max-width: 300px">
-
-      <form @submit.prevent="login">
-        <h1>Login</h1>
-        <q-input filled v-model="username" label="Username or Email" />
-        <q-input filled v-model="password" label="Password" type="password" />
-        <q-btn type="submit" label="Login" color="primary" />
-      </form>
-    </div>
+  <div>
+    <login-form />
+    <signup-form />
   </div>
-  
 </template>
 
+<script lang="ts">
+import { defineComponent } from 'vue'
+import Login from '../components/LoginForm.vue'
+import Signup from '../components/SignupForm.vue'
 
-<script setup lang="ts">
-import { ref } from 'vue'
-const username = ref('')
-const password = ref('')
-
-const login = () => {
-  console.log('username:', username.value)
-  console.log('password:', password.value)
-};
-
+export default defineComponent({
+  name: 'LoginPage',
+  components: {
+    'login-form': Login,
+    'signup-form': Signup
+  }
+})
 </script>
-
-<style>
-
-form {
-  display: flex;
-  flex-direction: column;
-}
-form h1 { 
-  font-size: auto;
-  text-align: center;
-  font-weight: bold;
-  margin-bottom: 1em;
-}
-
-</style> 
