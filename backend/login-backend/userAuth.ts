@@ -1,3 +1,4 @@
+// TODO: Implement database storage for users
 import express, { Request, Response, RequestHandler } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
@@ -6,6 +7,7 @@ import cors from 'cors'; // import cors package
 interface User {
     id: string;
     email: string;
+    username: string;
     password: string;
 }
 
@@ -45,7 +47,7 @@ class UserAuth {
     register = async (req: Request, res: Response): Promise<void> => {
         try {
             console.log('req.body', req.body); // Debugging
-            const { email, password } = req.body;
+            const { email, password, username } = req.body;
             console.log('email', email); // Debugging
             console.log('password', password); // Debugging
             if (this.users.find(user => user.email === email)) {
@@ -58,6 +60,7 @@ class UserAuth {
             const newUser: User = {
                 id: Date.now().toString(),
                 email,
+                username,
                 password: hashedPassword
             };
 
@@ -76,22 +79,33 @@ class UserAuth {
      * @throws 401 if credentials are invalid
      * @throws 500 if server error occurs
      */
+    // TODO: implement possibility to login with username, not just email
     login = async (req: Request, res: Response): Promise<void> => {
         console.log('Existing users:', this.users); // Debugging
         try {
             console.log('req.body', req.body); // Debugging
-            const { email, password } = req.body;
-            const user = this.users.find(u => u.email === email);
+            const { username, password } = req.body;
+            console.log('email', username); // Debugging
+            console.log('password', password); // Debugging
+            
+            if (!username || typeof username !== 'string') {
+                console.log('Invalid username:', username); // Debugging
+                res.status(400).json({ message: 'Invalid username format' });
+                return;
+            }
+            
+            const user = this.users.find(u => u.email === username);
 
 
             if (!user) {
-                console.log('User not found:', email); // Debugging
+                console.log('User not found:', username); // Debugging
                 res.status(401).json({ message: 'Invalid credentials' });
                 return;
             }
             console.log('User found:', user); // Debugging
             const isValidPassword = await bcrypt.compare(password, user.password);
             if (!isValidPassword) {
+                console.log('Invalid password:', password);
                 res.status(401).json({ message: 'Invalid credentials' });
                 return;
             }

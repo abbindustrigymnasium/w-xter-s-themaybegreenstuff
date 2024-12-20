@@ -74,9 +74,9 @@ export default defineComponent({
         }
 
         // Redirect to dashboard or home page
-        router.push('/dashboard');
+        router.push('/userpage');
         // Redirect to dashboard or home page
-        this.$router.push('/dashboard');
+        this.$router.push('/userpage');
       } catch (error) {
         console.error('Login error:', error);
         // Handle error (show notification, etc)
