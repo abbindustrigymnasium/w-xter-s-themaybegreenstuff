@@ -2,7 +2,7 @@
   <div class="q-pa-xl flex flex-center">
     <q-card class="login-card">
       <q-card-section>
-        <h1 class="text-h4">Login</h1>
+        <h1 class="text-h4">Admin Login</h1>
         <form @submit.prevent="login">
           <q-input
             filled
@@ -32,7 +32,7 @@
           <q-btn
             type="submit"
             label="Login"
-            color="primary"
+            color="dark"
             class="full-width"
             size="large"
           />
@@ -75,8 +75,6 @@ export default defineComponent({
 
         // Redirect to dashboard or home page
         router.push('/userpage');
-        // Redirect to dashboard or home page
-        this.$router.push('/userpage');
       } catch (error) {
         console.error('Login error:', error);
         // Handle error (show notification, etc)
@@ -101,7 +99,7 @@ export default defineComponent({
 
 h1 {
   text-align: center;
-  color: #1976D2;
+  color: var(--q-dark);
   margin-bottom: 2rem;
 }
 

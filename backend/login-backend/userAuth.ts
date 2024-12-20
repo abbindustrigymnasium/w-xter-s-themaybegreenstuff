@@ -4,6 +4,17 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import cors from 'cors'; // import cors package
 
+
+const executeQuery = require('./utils/mariadb.ts');
+
+async function initDatabase() {
+    const res = await executeQuery("SELECT * FROM users");
+    console.log(res);
+}
+
+initDatabase().catch(console.error);
+
+
 interface User {
     id: string;
     email: string;
