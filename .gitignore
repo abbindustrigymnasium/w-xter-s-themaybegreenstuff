@@ -3,3 +3,5 @@ node_modules
 # Make sure to ignore the project-params.toml file
 # It contains sensitive information
 project-params.toml
+
+.vs/*
