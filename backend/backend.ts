@@ -2,8 +2,6 @@ const { createServer } = require('node:http');
 const { WebSocketServer } = require('ws');
 const readline = require('readline');
 
-
-
 const hostname = '0.0.0.0';
 const port = 3000;
 
