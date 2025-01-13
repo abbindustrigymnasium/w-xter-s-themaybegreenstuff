@@ -5,3 +5,6 @@ node_modules
 project-params.toml
 
 .vs/*
+
+# Ignore environment files
+*.env
