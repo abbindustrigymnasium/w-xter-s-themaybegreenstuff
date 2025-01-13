@@ -3,6 +3,7 @@ import PrettyConsole from '../generalUtils';
 import express from 'express';
 import * as dotenv from 'dotenv';
 import cors from 'cors';
+import ws from 'ws';
 
 // Load environment variables from .dev.env file
 dotenv.config({ path: '../../.dev.env' });
@@ -11,22 +12,30 @@ dotenv.config({ path: '../../.dev.env' });
 const userAuth = new UserAuth();
 const prettyConsole = new PrettyConsole();
 
+
+// set the port for the auth server
 if (!process.env.PORT_AUTH) {
-    prettyConsole.logWarning('PORT_AUTH environment variable is not set. Continuing with default value. Please set PORT_AUTH for to mitigate this warning.');
+    prettyConsole.logWarning(
+        'PORT_AUTH environment variable is not set. Continuing with default value. Please set PORT_AUTH to mitigate this warning.'
+    );
 }
+const PORT = process.env.PORT_AUTH || 3000;
+if (process.env.DEBUG) {
+    prettyConsole.logInfo(`Backend is using port: ${PORT}`);
+}
+
 
 const app = express();
 app.use(express.json());
 
 // Allow requests from the frontend origin TODO: Add safe origin
-app.use(cors({
-    origin: '*', // Allow all origins
-    methods: ['GET', 'POST', 'OPTIONS'], // Allowed methods
-    allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers
-}));
-
-
-
+app.use(
+    cors({
+        origin: '*', // Allow all origins
+        methods: ['GET', 'POST', 'OPTIONS'], // Allowed methods
+        allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers
+    })
+);
 
 // TODO: Remove this user generation method when the actual method is implemented
 // userAuth.generateUser('', '', '');
@@ -41,6 +50,11 @@ app.post('/auth', async (req: any, res: any) => {
 
     try {
         const token = await userAuth.getAuthToken(username, password);
+        console.log(token);
+        if (token) {
+            console.log(await userAuth.decodeAuthToken(token));
+            console.log(await userAuth.getAuthLevelFromJWT(token));
+        }
 
         if (typeof token === 'string') {
             return res.json({ token });
@@ -53,7 +67,40 @@ app.post('/auth', async (req: any, res: any) => {
     }
 });
 
-const PORT = process.env.PORT_AUTH || 3000;
-app.listen(PORT, () => {
-    prettyConsole.logSuccess(`Started auth server on port ${PORT}`);
+
+
+// Start the Express server
+const server = app.listen(PORT, () => {
+    prettyConsole.logSuccess(`Started auth server`);
 });
+
+
+
+
+    // Create a WebSocket server
+    const wss = new ws.Server({ server });
+
+    prettyConsole.logSuccess('WebSocket server started');
+
+    // Handle WebSocket connections
+    wss.on('connection', (socket: ws.WebSocket) => {
+        prettyConsole.logInfo('New WebSocket connection established');
+
+        // Listen for messages from the client
+        socket.on('message', (message: string) => {
+            prettyConsole.logInfo(`Received message: ${message}`);
+
+            // Example: Echo the message back to the client
+            socket.send(`Echo: ${message}`);
+        });
+
+        // Handle WebSocket errors
+        socket.on('error', (error) => {
+            prettyConsole.logError(`WebSocket error: ${error.message}`);
+        });
+
+        // Handle client disconnection
+        socket.on('close', () => {
+            prettyConsole.logInfo('WebSocket connection closed');
+        });
+    });

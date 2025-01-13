@@ -9,7 +9,7 @@
       </q-header>
   
       <!-- Sidebar / Drawer -->
-      <UserDrawer />
+      <admin-drawer />
   
       <!-- Main Content -->
       <q-page-container>
@@ -20,7 +20,7 @@
   
   <script lang="ts">
   import { defineComponent } from 'vue';
-  import UserDrawer from '../components/UserDrawer.vue';
+  import AdminPanel from '../components/AdminPanel.vue';
   
   export default defineComponent({
     data() {
@@ -34,7 +34,7 @@
       },
     },
     components: {
-      UserDrawer: UserDrawer,
+      AdminDrawer: AdminPanel,
     },
   });
   </script>

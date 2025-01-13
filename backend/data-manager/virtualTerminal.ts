@@ -82,9 +82,3 @@ class VirtualTerminalBackend {
 
 export default VirtualTerminalBackend;
 
-// Example usage
-const vtb = new VirtualTerminalBackend('admin', 5);
-vtb.parseCommand('SELECT * FROM users');
-vtb.logCommand('admin', 'SELECT user FROM users');
-
-console.log(vtb.tempLog);

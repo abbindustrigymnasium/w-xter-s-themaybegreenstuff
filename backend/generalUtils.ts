@@ -5,6 +5,7 @@ class PrettyConsole {
         error: '\x1b[31m',
         success: '\x1b[32m',
         separator: '\x1b[36m',
+        info: '\x1b[34m',
     };
 
     private separator = '--------------------------';
@@ -47,6 +48,10 @@ class PrettyConsole {
             console.log(details);
             console.log(`${this.colors.separator}${this.separator}${this.colors.reset}\n`);
         }
+    }
+
+    public logInfo(message: string): void {
+        console.log(this.formatMessage('Info', this.colors.info, message));
     }
 }
 

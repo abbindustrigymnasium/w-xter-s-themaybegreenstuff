@@ -61,8 +61,6 @@ export default defineComponent({
           password: password.value,
         };
 
-        console.log('Payload:', payload);
-
         // Make POST request
         const response = await fetch('http://localhost:3000/auth', {
           method: 'POST',
@@ -85,13 +83,11 @@ export default defineComponent({
           throw new Error('Authentication succeeded but no token received.');
         }
 
-        console.log('Token:', token);
-
         // Store the token
         localStorage.setItem('jwtToken', token);
 
         // Redirect to another page
-        router.push('/user/userpage');
+        router.push('/user/adminpage');
       } catch (error) {
         console.error('Login error:', error);
         // Handle the error (e.g., show a notification or error message to the user)

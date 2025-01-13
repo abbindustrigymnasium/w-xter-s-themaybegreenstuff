@@ -1,22 +1,20 @@
 <template>
     <div>
-        <h1>User Page</h1>
+        
+
     </div>
-  </template>
+</template>
 
 <script lang='ts'>
-
-
 export default {
-    name: 'UserPage',
+    name: 'AdminTerminal',
     data() {
         return {
             
         };
     },
     methods: {
-       
-        // Add your methods here
+        
     },
     computed: {
         // Add your computed properties here
@@ -24,8 +22,5 @@ export default {
 };
 </script>
 
-
-
 <style scoped>
-
 </style>

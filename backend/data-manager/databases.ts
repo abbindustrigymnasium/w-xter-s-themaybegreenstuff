@@ -1,6 +1,6 @@
 import PrettyConsole from '../generalUtils';
-
 import mariadb from 'mariadb';
+
 
 
 /// @brief Database class to interact with the MariaDB database pool
@@ -47,9 +47,9 @@ class Database {
 
         // Close the pool on application shutdown
         process.on('SIGINT', async () => {
-            console.log('Closing database pool...');
+            this.prettyConsole.logInfo('Closing database pool.');
             await this.pool.end();
-            console.log('Database pool closed.');
+            this.prettyConsole.logSuccess('Database pool closed, exiting.');
             process.exit(0);
         });
     }

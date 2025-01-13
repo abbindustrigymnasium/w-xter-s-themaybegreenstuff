@@ -1,6 +1,6 @@
 <template>
     <div>
-        <h1>User Page</h1>
+        <h1>Admin Page</h1>
     </div>
   </template>
 
@@ -8,7 +8,7 @@
 
 
 export default {
-    name: 'UserPage',
+    name: 'AdminPage',
     data() {
         return {
             
