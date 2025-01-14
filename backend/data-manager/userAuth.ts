@@ -48,8 +48,18 @@ class UserAuth {
 
     const user = await this.getUserByUsername(decoded.username);
     if (!user) return -1;
-
     return user.permission_level;
+  }
+
+  /// TODO: verify if this is working
+  /// @RETURN: boolean, turns true if the token is valid and has not expired
+  async checkJWTexpiration(token: string): Promise<boolean> {
+    const decoded = await this.decodeAuthToken(token);
+    if (!decoded) return false;
+
+    const currentTime = Math.floor(Date.now() / 1000);
+    if (decoded.exp < currentTime) return false;
+    return true;
   }
 
   async getAuthToken(username: string, password: string): Promise<string | null> {
@@ -90,7 +100,7 @@ class UserAuth {
   async decodeAuthToken(token: string): Promise<DecodedToken | null> {
     try {
       const decoded = jwt.verify(token, this.jwtSecretKey) as DecodedToken;
-      if (process.env.DEBUG) this.prettyConsole.logSuccess('Token decoded successfully');
+      if (process.env.DEBUG) this.prettyConsole.logSuccess('Token decoded successfully', decoded);
       return decoded;
     } catch (err) {
       this.prettyConsole.logError('Error decoding token', err);
@@ -102,7 +112,7 @@ class UserAuth {
     const hashedPassword = await this.hashPassword(password);
     try {
       await this.db.query(
-        'INSERT INTO users (username, email, password, permission_level) VALUES (?, ?, ?, 1);',
+        'INSERT INTO users (username, email, password, permission_level) VALUES (?, ?, ?, -1);',
         [username, email, hashedPassword]
       );
       if (process.env.DEBUG) this.prettyConsole.logSuccess('User created successfully');

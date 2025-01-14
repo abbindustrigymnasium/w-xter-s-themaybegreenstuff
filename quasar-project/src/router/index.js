@@ -10,11 +10,9 @@ const router = createRouter({
 // Add a global beforeEach guard
 router.beforeEach(async (to, from, next) => {
   const isAuth = await isAuthenticated();
-  console.log("Route requires auth: ", to.meta.requiresAuth, "Is authenticated: ", isAuth);
   if (to.meta.requiresAuth && !isAuth) {
     next('/login'); // Redirect to login page if not authenticated
   } else {
-    console.log('auth passed')
     next(); // Proceed to the route
   }
 });

@@ -69,10 +69,14 @@ app.post('/JWTAuthLevel', async (req: any, res: any) => {
         return res.status(400).json({ error: 'Token not provided' });
     }
 
-    try {
-        const authlevel = userAuth.getAuthLevelFromJWT(token);
+    if (!userAuth.checkJWTexpiration(token)) {
+        return res.status(401).json({ error: 'Token expired' });
+    }
 
+    try {
+        const authlevel = await userAuth.getAuthLevelFromJWT(token);
         if (typeof authlevel === "number") {
+            if(process.env.DEBUG) prettyConsole.logSuccess(`Permission Level returned to user: `, authlevel);
             return res.json({ authlevel });
         } else {
             return res.status(500).json({ error: 'Internal server error' });
