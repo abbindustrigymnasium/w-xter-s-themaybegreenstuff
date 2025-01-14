@@ -50,11 +50,6 @@ app.post('/auth', async (req: any, res: any) => {
 
     try {
         const token = await userAuth.getAuthToken(username, password);
-        console.log(token);
-        if (token) {
-            console.log(await userAuth.decodeAuthToken(token));
-            console.log(await userAuth.getAuthLevelFromJWT(token));
-        }
 
         if (typeof token === 'string') {
             return res.json({ token });
@@ -65,6 +60,28 @@ app.post('/auth', async (req: any, res: any) => {
         prettyConsole.logError(`Error during authentication: ${error}`);
         return res.status(500).json({ error: 'Internal server error' });
     }
+});
+
+// Returns the auth level of the given jwt
+app.post('/JWTAuthLevel', async (req: any, res: any) => {
+    const { token } = req.body;
+    if (!token) {
+        return res.status(400).json({ error: 'Token not provided' });
+    }
+
+    try {
+        const authlevel = userAuth.getAuthLevelFromJWT(token);
+
+        if (typeof authlevel === "number") {
+            return res.json({ authlevel });
+        } else {
+            return res.status(500).json({ error: 'Internal server error' });
+        }
+    } catch (error) { 
+        prettyConsole.logError(`Error authenticating with auth level from jwt`);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+
 });
 
 
