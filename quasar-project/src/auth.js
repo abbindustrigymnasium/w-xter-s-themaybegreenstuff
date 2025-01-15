@@ -1,6 +1,6 @@
 
 
-
+/// NOTE: This function requires further testing and validation
 export async function isAuthenticated() {
   const payload = {
     token: localStorage.getItem('jwtToken'),
@@ -15,8 +15,11 @@ export async function isAuthenticated() {
   });
 
   const { authlevel } = await response.json(); // Decode the json
-  
-  return authlevel;
+  console.log(authlevel);
 
-  
+  if(typeof authlevel !== 'number') { // secure the response is a number
+    return -1;
+  }
+
+  return authlevel;
 }

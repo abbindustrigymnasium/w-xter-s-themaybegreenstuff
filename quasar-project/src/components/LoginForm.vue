@@ -117,6 +117,7 @@ h1 {
   text-align: center;
   color: var(--q-dark);
   margin-bottom: 2rem;
+  font-weight: bold;
 }
 
 form {
