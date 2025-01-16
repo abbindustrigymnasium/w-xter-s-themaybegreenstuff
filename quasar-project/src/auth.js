@@ -6,7 +6,8 @@ export async function isAuthenticated() {
     token: localStorage.getItem('jwtToken'),
   };
   // Make POST request
-  const response = await fetch('http://localhost:3000/JWTAuthLevel', {
+  const hostIP = window.location.hostname;
+  const response = await fetch(`http://${hostIP}:3000/JWTAuthLevel`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

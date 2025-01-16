@@ -3,7 +3,9 @@ import PrettyConsole from '../generalUtils';
 import express from 'express';
 import * as dotenv from 'dotenv';
 import cors from 'cors';
-import ws from 'ws';
+import WebSocket, {WebSocketServer} from 'ws';
+import { URLSearchParams } from 'url';
+
 
 // Load environment variables from .dev.env file
 dotenv.config({ path: '../../.dev.env' });
@@ -98,30 +100,52 @@ const server = app.listen(PORT, () => {
 
 
 
-    // Create a WebSocket server
-    const wss = new ws.Server({ server });
 
-    prettyConsole.logSuccess('WebSocket server started');
 
-    // Handle WebSocket connections
-    wss.on('connection', (socket: ws.WebSocket) => {
-        prettyConsole.logInfo('New WebSocket connection established');
+///NOTE:  clients who wish to receive broadcast messages need to specify the client_type query parameter as 'client'
 
-        // Listen for messages from the client
-        socket.on('message', (message: string) => {
-            prettyConsole.logInfo(`Received message: ${message}`);
+// Start WebSocket server
+const wss = new WebSocketServer({ server });
 
-            // Example: Echo the message back to the client
-            socket.send(`Echo: ${message}`);
-        });
+prettyConsole.logSuccess('WebSocket server started');
 
-        // Handle WebSocket errors
-        socket.on('error', (error) => {
-            prettyConsole.logError(`WebSocket error: ${error.message}`);
-        });
+// Handle WebSocket connections
+wss.on('connection', (socket: WebSocket, req) => {
+    // Extract query parameters from the request URL
+    const params = new URLSearchParams(req.url?.split('?')[1]);
+    const client_type = params.get('client_type');
 
-        // Handle client disconnection
-        socket.on('close', () => {
-            prettyConsole.logInfo('WebSocket connection closed');
+    // Attach the client type to the socket object
+    (socket as any).client_type = client_type;
+
+    // Log client type
+    prettyConsole.logInfo(`Client connected: ${client_type}`);
+
+    // Example: Sending a welcome message back to the client
+    socket.send(`Welcome, ${client_type} client!`);
+
+    // Listen for messages from the client
+    socket.on('message', (message: string) => {
+        prettyConsole.logInfo(`Received message from ${client_type}: ${message}`);
+
+        // Broadcast the message to all connected clients
+        wss.clients.forEach((client) => {
+            if (
+                client.readyState === WebSocket.OPEN &&
+                (client as any).client_type === 'client'
+            ) {
+                client.send(message);
+            }
         });
     });
+
+    // Handle WebSocket errors
+    socket.on('error', (error) => {
+        prettyConsole.logError(`WebSocket error for ${client_type}: ${error.message}`);
+    });
+
+    // Handle client disconnection
+    socket.on('close', () => {
+        prettyConsole.logInfo(`WebSocket connection closed for ${client_type}`);
+    });
+});

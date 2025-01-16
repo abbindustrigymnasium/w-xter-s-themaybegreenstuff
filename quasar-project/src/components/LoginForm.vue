@@ -62,7 +62,8 @@ export default defineComponent({
         };
 
         // Make POST request
-        const response = await fetch('http://localhost:3000/auth', {
+        const hostIP = window.location.hostname;
+        const response = await fetch(`http://${hostIP}:3000/auth`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
