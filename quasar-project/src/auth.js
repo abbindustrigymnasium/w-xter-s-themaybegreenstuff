@@ -1,7 +1,9 @@
 
-
+//NOTE: temp for dbg
+const dbg = 1;
 
 export async function isAuthenticated() {
+  if (dbg === 1) return 15;
   const payload = {
     token: localStorage.getItem('jwtToken'),
   };
