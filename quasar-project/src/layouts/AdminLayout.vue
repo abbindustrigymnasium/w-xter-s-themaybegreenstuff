@@ -1,15 +1,15 @@
 <template>
     <q-layout view="hHh lpR fFf">
       <!-- Header -->
-      <q-header elevated class="bg-primary text-white">
+      <q-header elevated class="bg-secondary text-white">
         <q-toolbar>
-          <q-toolbar-title>User Panel</q-toolbar-title>
+          <q-toolbar-title>Admin Panel</q-toolbar-title>
           <q-btn flat dense round icon="logout" @click="logout" aria-label="Logout" />
         </q-toolbar>
       </q-header>
   
       <!-- Sidebar / Drawer -->
-      <UserDrawer />
+      <admin-drawer />
   
       <!-- Main Content -->
       <q-page-container>
@@ -20,7 +20,7 @@
   
   <script lang="ts">
   import { defineComponent } from 'vue';
-  import UserDrawer from '../components/UserDrawer.vue';
+  import AdminPanel from '../components/AdminPanel.vue';
   
   export default defineComponent({
     data() {
@@ -34,7 +34,7 @@
       },
     },
     components: {
-      UserDrawer: UserDrawer,
+      AdminDrawer: AdminPanel,
     },
   });
   </script>

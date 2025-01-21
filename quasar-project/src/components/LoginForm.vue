@@ -54,32 +54,48 @@ export default defineComponent({
     const password = ref('')
 
     const login = async () => {
-      // TODO: Implement login logic
-      // NOTE: You should use a state management library like Vuex for this
-      console.log('Login attempt:', username.value, password.value)
       try {
-        const response = await fetch('http://localhost:3000/login', {
+        // Build request payload
+        const payload = {
+          username: username.value,
+          password: password.value,
+        };
+
+        // Make POST request
+        const hostIP = window.location.hostname;
+        const response = await fetch(`http://${hostIP}:3000/auth`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            username: username.value,
-            password: password.value
-          })
+          body: JSON.stringify(payload),
         });
 
         if (!response.ok) {
-          throw new Error('Login failed');
+          const errorDetails = await response.json().catch(() => ({}));
+          throw new Error(
+            `Authentication failed. Status: ${response.status}. ${errorDetails.message || ''}`
+          );
         }
 
-        // Redirect to dashboard or home page
-        router.push('/userpage');
+        // Parse the JSON response
+        const { token } = await response.json();
+        if (!token) {
+          throw new Error('Authentication succeeded but no token received.');
+        }
+
+        // Store the token
+        localStorage.setItem('jwtToken', token);
+
+        // Redirect to another page
+        router.push('/user/adminpage');
       } catch (error) {
         console.error('Login error:', error);
-        // Handle error (show notification, etc)
+        // Handle the error (e.g., show a notification or error message to the user)
+        alert(`Login failed: ${error}`);
       }
-    }
+    };
+
 
     return {
       username,
@@ -89,6 +105,7 @@ export default defineComponent({
   }
 })
 </script>
+
 
 <style scoped>
 .login-card {
@@ -101,6 +118,7 @@ h1 {
   text-align: center;
   color: var(--q-dark);
   margin-bottom: 2rem;
+  font-weight: bold;
 }
 
 form {

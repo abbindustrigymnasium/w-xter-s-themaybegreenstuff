@@ -1,58 +1,33 @@
 <template>
-    <div>
-        <q-page class="flex flex-center">
-        <q-card class="q-mx-md" style="max-width: 400px">
-            <q-card-section>
-            <q-item>
-                <q-item-section>
-                <q-item-label header>
-                    Admin Options
-                </q-item-label>
-                </q-item-section>
-            </q-item>
-            </q-card-section>
-            <q-card-section>
-            <q-item>
-                <q-item-section>
-                <q-item-label>
-                    <q-icon name="person" />
-                    Users
-                </q-item-label>
-                </q-item-section>
-                <q-item-section side>
-                <q-btn
-                    color="primary"
-                    unelevated
-                    to="/admin/users"
-                    label="Manage"
-                />
-                </q-item-section>
-            </q-item>
-            <q-item>
-                <q-item-section>
-                <q-item-label>
-                    <q-icon name="settings" />
-                    Settings
-                </q-item-label>
-                </q-item-section>
-                <q-item-section side>
-                <q-btn
-                    color="primary"
-                    unelevated
-                    to="/admin/settings"
-                    label="Manage"
-                />
-                </q-item-section>
-            </q-item>
-            </q-card-section>
-        </q-card>
-        </q-page>
-    </div>
+  <q-layout view="hHh lpR fFf">
+    <!-- Header -->
+    <q-header elevated class="bg-primary text-white">
+      <q-toolbar>
+        <q-toolbar-title>Main Layout</q-toolbar-title>
+      </q-toolbar>
+    </q-header>
+
+    <!-- Drawer -->
+    <q-drawer show-if-above side="left" elevated>
+      <q-list>
+        <q-item clickable to="/dashboard">
+          <q-item-section>Dashboard</q-item-section>
+        </q-item>
+        <q-item clickable to="/userpage">
+          <q-item-section>User Page</q-item-section>
+        </q-item>
+      </q-list>
+    </q-drawer>
+
+    <!-- Main Content -->
+    <q-page-container>
+      <router-view />
+    </q-page-container>
+  </q-layout>
 </template>
 
-<script setup lang="ts">
-//import { ref } from 'vue'
-
-
-
+<script>
+export default {
+  name: 'MainLayout'
+};
 </script>
