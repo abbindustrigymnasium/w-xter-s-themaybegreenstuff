@@ -67,7 +67,7 @@
             <q-btn
               type="submit"
               label="Sign Up"
-              color="primary"
+              color=green
               class="full-width"
               size="large"
             />
@@ -135,12 +135,12 @@
   .signup-card {
     width: 100%;
     max-width: 400px;
-    padding: 20px;
+    padding: 20px;  
   }
   
   h1 {
     text-align: center;
-    color: #1976D2;
+    color: #000000;
     margin-bottom: 2rem;
   }
   

@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="background">
     <login-form />
     <signup-form />
     <admin-options />
@@ -21,3 +21,15 @@ export default defineComponent({
   }
 })
 </script>
+
+
+
+<style scoped>
+.background {
+background-image: url(../assets/greenery-background.jpg);
+  background-size: cover;
+  
+}
+
+
+</style>
