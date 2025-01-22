@@ -1,5 +1,5 @@
 //NOTE: temp for dbg
-const dbg = 1;
+const dbg = 0;
 
 export async function isAuthenticated() {
   if (dbg === 1) return 15;

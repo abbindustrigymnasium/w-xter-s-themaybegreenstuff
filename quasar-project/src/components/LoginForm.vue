@@ -112,6 +112,7 @@ export default defineComponent({
   width: 100%;
   max-width: 400px;
   padding: 20px;
+  margin: 100px;
 }
 
 h1 {

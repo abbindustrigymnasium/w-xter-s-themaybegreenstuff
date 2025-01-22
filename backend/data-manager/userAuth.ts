@@ -32,6 +32,9 @@ class UserAuth {
   constructor() {
     this.db = new Database();
     this.saltRounds = 10;
+    this.generateUser('isak', 'a@a.com', 'pass');
+ 
+
 
     if (!process.env.JWT_SECRET_KEY || process.env.JWT_SECRET_KEY === 'default_secret_key') {
       this.prettyConsole.logUnsafe(
