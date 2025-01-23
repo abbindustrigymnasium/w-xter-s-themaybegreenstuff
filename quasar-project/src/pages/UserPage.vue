@@ -43,7 +43,7 @@ export default {
 
 <style scoped>
 body {
-    background-image: url("../assets/rightfuck.jpg");
+    background-image: url("../assets/overgrown-wall.jpg");
     max-width: 100%;
     height:617px;
     background-repeat: no-repeat;
