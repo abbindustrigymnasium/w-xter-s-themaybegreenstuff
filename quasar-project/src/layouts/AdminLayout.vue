@@ -22,6 +22,7 @@
   import { defineComponent } from 'vue';
   import AdminPanel from '../components/AdminPanel.vue';
   
+  
   export default defineComponent({
     data() {
       return {

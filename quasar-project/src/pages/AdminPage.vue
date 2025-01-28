@@ -2,14 +2,13 @@
     <div>
         <h1>Admin Page</h1>
         <GraphGeneric :data="chartData" />
+        <GreenHouseController />
     </div>
   </template>
 
 <script lang='ts'>
-    //import { defineComponent } from 'vue';
-    //import GraphGeneric from '../components/GraphGeneric.vue';
+import GreenHouseController from '../components/GreenHouseController.vue';
 import GraphGeneric from '../components/GraphGeneric.vue';
-
 export default {
     name: 'AdminPage',
     methods: {
@@ -19,7 +18,7 @@ export default {
     computed: {
         // Add your computed properties here
     },
-    components: { GraphGeneric },
+    components: { GraphGeneric, GreenHouseController : GreenHouseController },
     data() {
         return {
         chartData: [

@@ -7,6 +7,8 @@ import WebSocket, {WebSocketServer} from 'ws';
 import { URLSearchParams } from 'url';
 
 
+
+
 // Load environment variables from .dev.env file
 dotenv.config({ path: '../../.dev.env' });
 
@@ -186,9 +188,9 @@ wss.on('connection', (socket: WebSocket, req) => {
 });
 
 
-// -----------------------------------------------------------------------
-// WebSocket server for embedded devices
-// -----------------------------------------------------------------------
+
+
+
 
 // Start the Express server
 const server2 = app.listen(PORT2, () => {
@@ -202,6 +204,7 @@ const wss2 = new WebSocketServer({ server: server2 });
 prettyConsole.logSuccess('WebSocket server 2 started');
 
 app.post('/data2', async (req: any, res: any) => {
+    prettyConsole.logWarning('Data received:', req.body);
     let hatch: number;
     let fan: number;
     let pump: number;
@@ -215,7 +218,7 @@ app.post('/data2', async (req: any, res: any) => {
     }
     // Check if all required data was provided
     if(hatch === undefined || fan === undefined || pump === undefined) {
-        prettyConsole.logError('Hatch, Fan or Pump data is missing');
+        prettyConsole.logError('Hatch, Fan or Pump data is missing', req.body);
         return res.status(400).json({ error: 'All required properties were not recived' });
     }
     broadcast_values_to_clients(hatch, fan, pump);

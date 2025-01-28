@@ -1,5 +1,5 @@
 //NOTE: temp for dbg
-const dbg = 1;
+const dbg = 0;
 
 export async function isAuthenticated() {
   if (dbg === 1) return 15;
@@ -8,7 +8,7 @@ export async function isAuthenticated() {
   };
   // Make POST request
   const hostIP = window.location.hostname;
-  const response = await fetch(`http://${hostIP}:3000/JWTAuthLevel`, {
+  const response = await fetch(`http://${hostIP}:3001/JWTAuthLevel`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

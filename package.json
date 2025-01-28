@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "start_backend": "ts-node backend/backend.ts"
+    "start_backend": "ts-node backend/data-manager/server.ts"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
@@ -10,6 +10,9 @@
     "@types/node": "^22.10.2",
     "@types/pg": "^8.11.10",
     "@types/ws": "^8.5.13",
+    "@typescript-eslint/eslint-plugin": "^8.21.0",
+    "@typescript-eslint/parser": "^8.21.0",
+    "eslint": "^9.18.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2"
   },
@@ -22,6 +25,7 @@
     "mariadb": "^3.4.0",
     "pg": "^8.13.1",
     "toml": "^3.0.0",
+    "uuid": "^11.0.5",
     "ws": "^8.18.0"
   }
 }
