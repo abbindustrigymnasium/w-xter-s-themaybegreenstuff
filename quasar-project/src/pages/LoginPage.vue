@@ -1,8 +1,6 @@
 <template>
   <div class="background">
     <login-form />
-    <signup-form />
-    <admin-options />
   </div>
 </template>
 
@@ -27,6 +25,7 @@ export default defineComponent({
 .background {
 background-image: url(../assets/greenery-background.jpg);
   background-size: cover;
+  
   
 }
 
