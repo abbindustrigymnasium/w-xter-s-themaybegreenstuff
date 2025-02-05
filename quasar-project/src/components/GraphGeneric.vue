@@ -46,12 +46,12 @@
         }
   
         // Chart dimensions and margins
-        const width = 928;
+        const width = 900;
         const height = 500;
         const marginTop = 20;
-        const marginRight = 30;
+        const marginRight = 20;
         const marginBottom = 30;
-        const marginLeft = 40;
+        const marginLeft = 60;
   
         // Define scales
         const x = d3
@@ -151,6 +151,17 @@
   .chart-container {
     width: 100%;
     overflow-x: auto;
+  }
+
+  .chart-container :deep(text) {
+  font-size: 20px;
+  fill: black;
+}
+
+  .q-pa-md {
+    width: 50%;
+    margin: 20px;
+    border-radius: 10px;
   }
   </style>
   

@@ -177,7 +177,20 @@ export default {
     display: flex;
     flex-direction: row;
     gap: 20px; 
+    background-color: white;
+    margin: 5px;
+    border-radius: 10px;
 }
+
+.q-btn {
+    background-color: white;
+    border-radius: 10px;
+}
+
+.q-table__container {
+    border-radius: 10px;
+}
+
 .q-pa-md {
     display: flex;
     flex-direction: column;
