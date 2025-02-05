@@ -3,12 +3,15 @@
         <h1>Admin Page</h1>
         <GraphGeneric :data="chartData" />
         <GreenHouseController />
+        <UserCreationForm />
     </div>
   </template>
 
 <script lang='ts'>
 import GreenHouseController from '../components/GreenHouseController.vue';
 import GraphGeneric from '../components/GraphGeneric.vue';
+import UserCreationForm from '../components/UserCreationForm.vue';
+
 export default {
     name: 'AdminPage',
     methods: {
@@ -18,7 +21,7 @@ export default {
     computed: {
         // Add your computed properties here
     },
-    components: { GraphGeneric, GreenHouseController : GreenHouseController },
+    components: { GraphGeneric, GreenHouseController : GreenHouseController, UserCreationForm : UserCreationForm },
     data() {
         return {
         chartData: [

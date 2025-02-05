@@ -1,15 +1,13 @@
 
-#include "74hc595n_4bit_status_display.h"
+//#include "74hc595n_4bit_status_display.h" Not required
 
 #if defined(ESP32)
 #include <WiFi.h> // ESP32 WiFi library
 #include "motor_controller.h" // esp32 pwm controller
 #elif defined(ESP8266)
 #include <ESP8266WiFi.h> // ESP8266 WiFi library
+#include "dc_motor_controller.h"
 #endif
-
-#define ws_error_pin 18
-#define ws_msg_pin 19
 
 #define DEBUG ///< Output debug messages
 
@@ -26,12 +24,20 @@ const char* password = "mittwifiarsabra";
 const char* server_url = "ws://10.22.5.5:3000/?type=embedded_device"; // WebSocket server URL 
 
 
+#if defined(ESP32)
 // Create an instance of MotorController
 MotorController motor(21, 0, 5000, LEDC_TIMER_8_BIT);
+MotorController pump(19, 0, 5000, LEDC_TIMER_8_BIT);
+
+#elif defined(ESP8266)
+motorController motor()
+#endif
 // Create a websocket client instance
 WebsocketsClient client;
 
-StatusDisplay sd();
+
+// Had timing issues I didn't feel like fixing. Since it's not a requirenment, it's left out
+//StatusDisplay sd(4,5,18);
 
 
 struct greenhouse_params {
@@ -44,28 +50,32 @@ struct greenhouse_params {
 
 greenhouse_params gp; ///< struct instance to store the values [1,255] for each controllable item
 
-// Make sure inputs are in the span [1, 255] since the null char can't be handled properly
-void parse_post(String res) {  
-  if (res.length() != 3) {
-    Serial.println("Error: Input string must be exactly 3 characters long.  (" + String(res.length()) + ")");
+
+// Make sure inputs are in the span [0, 255] 
+void parse_post(const String& res) {  
+  // Extract values assuming structure: hatch,fan,pump
+  uint8_t hatch, fan, pump;
+  if (sscanf(res.c_str(), "%hhu,%hhu,%hhu", &hatch, &fan, &pump) == 3) {
+    // Clamp values to range [0, 255]
+    gp.hatch = constrain(hatch, 0, 255);
+    gp.fan = constrain(fan, 0, 255);
+    gp.pump = constrain(pump, 0, 255);
+  } else {
+    Serial.println("Error: Invalid input format");
     return;
   }
 
+#ifdef DEBUG
   // Debug print of the received string
   Serial.println("Received: " + res);
 
-  // Extract ASCII values for each character
-  gp.pump = res.charAt(0);   // First character
-  gp.fan = res.charAt(1);    // Second character
-  gp.hatch = res.charAt(2);  // Third character
-
-#ifdef DEBUG
   // Debug print of the extracted values
   Serial.println("Pump: " + String(gp.pump));
   Serial.println("Fan: " + String(gp.fan));
   Serial.println("Hatch: " + String(gp.hatch));
 #endif // DEBUG
 }
+
 
 
 // --------------- Helper Functions for diode_info_handler ---------------
@@ -163,9 +173,12 @@ void setup() {
 
 void loop() {
   static bool motor_is_spinning_ = false;
+  static bool pump_is_spinning_ = false;
+
   // Keep the WebSocket connection alive
   client.poll();
 
+#if defined(ESP32)
   // Set motor speed according to greenhouse params instance
   if(gp.fan > 1) {
     if (!motor_is_spinning_) { ///< requred to "kickstart" the motor if it's not already spinning
@@ -179,9 +192,21 @@ void loop() {
     motor_is_spinning_ = false;
   }
 
-  sd.write_diode(2,1);
-  delay(500);
-  sd.write_diode(1, 1);
-  delay(500);
-  sd.write_diode(2,0);
+
+  if(gp.pump > 1) {
+    if(!pump_is_spinning_) {
+      pump_is_spinning_ = true;
+      pump.set_speed(255);
+      delay(100);
+    }
+    pump.set_speed(map(gp.pump, 1, 255, 100, 255));
+  } else {
+    pump.stop();
+    pump_is_spinning_ = false;
+  }
+
+#elif defined(ESP8266)
+
+#endif
+
 }

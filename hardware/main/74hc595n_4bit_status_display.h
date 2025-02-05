@@ -1,7 +1,7 @@
 #define rclk_time 10
 class StatusDisplay {
 public:
-  StatusDisplay(const uint8_t shift_pin, const uint8_t clk_pin, const uint8_t rclk_pin) : current_status(0), shift_pin_(shift_pin), clk_pin_(clk_pin), rclk_pin_(rclk_pin) {
+  StatusDisplay(const uint8_t shift_pin, const uint8_t clk_pin, const uint8_t rclk_pin) : current_status_(0), shift_pin_(shift_pin), clk_pin_(clk_pin), rclk_pin_(rclk_pin) {
     pinMode(shift_pin_, OUTPUT); ///< Set pin values
     pinMode(clk_pin_, OUTPUT);
     pinMode(rclk_pin_, OUTPUT);
@@ -15,7 +15,13 @@ public:
 
     current_status_ = updated_status;
     shiftOut(shift_pin_, clk_pin_, LSBFIRST, current_status_); ///< Shift out the current status to update the diodes
-    
+
+    // Cycle rclk
+    digitalWrite(rclk_pin_, HIGH);
+    delay(rclk_time);
+    digitalWrite(rclk_pin_, LOW);
+
+    Serial.println(current_status_, BIN);
   }
 
 private:

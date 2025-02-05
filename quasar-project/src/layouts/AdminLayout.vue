@@ -31,7 +31,9 @@
     },
     methods: {
       logout() {
-        // Implement your logout logic here
+        // Clear local jwt and redirect to userpage
+        localStorage.clear();
+        this.$router.push('/');
       },
     },
     components: {

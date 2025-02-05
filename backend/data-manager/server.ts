@@ -97,8 +97,26 @@ app.post('/JWTAuthLevel', async (req: any, res: any) => {
 });
 
 
+app.post('/createUser', async (req: any, res: any) => {
+    prettyConsole.logInfo('Creating user');
+    const { username, email, password, authlevel } = req.body;
+  
+    if (!username || !email || !password || !authlevel) {
+        return res.status(400).json({ error: 'All fields are required' });
+    }
 
-
+    try {
+        const success = await userAuth.generateUser(username, email, password, authlevel);
+        if (success) {
+            return res.json({ message: 'User created successfully' });
+        } else {
+            return res.status(500).json({ error: 'Internal server error' });
+        }
+    } catch (error) {
+        prettyConsole.logError(`Error creating user: ${error}`);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
 // -----------------------------------------------------------------------
 // WebSocket server for website graphs

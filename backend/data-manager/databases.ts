@@ -1,7 +1,13 @@
 import PrettyConsole from '../generalUtils';
 import mariadb from 'mariadb';
 
-
+interface DatabaseParams {
+    user?: string;
+    host?: string;
+    database?: string;
+    password?: string;
+    port?: string;
+}
 
 /// @brief Database class to interact with the MariaDB database pool
 class Database {
@@ -9,7 +15,7 @@ class Database {
 
     private prettyConsole = new PrettyConsole();
 
-    private defParams = {
+    private defParams: DatabaseParams = {
         user: 'default_user',
         host: 'localhost',
         database: 'waxteras',
@@ -17,30 +23,32 @@ class Database {
         port: '3306', // Default MariaDB port
     };
 
-    constructor() {
-        // Warn if the paramerters are not set
-        if (!process.env.DB_USER) {
+    constructor(customParams: DatabaseParams = {}) {
+        const params = { ...this.defParams, ...customParams };
+
+        // Warn if the parameters are not set
+        if (!params.user) {
             this.prettyConsole.logUnsafe('Database user is not set. For safe operation, the DB_USER should be specified. Continuing with default user.', this.defParams.user);
         }
-        if (!process.env.DB_HOST) {
+        if (!params.host) {
             this.prettyConsole.logUnsafe('Database host is not set. For safe operation, the DB_HOST should be specified. Continuing with default host.', this.defParams.host);
         }
-        if (!process.env.DB_NAME) {
+        if (!params.database) {
             this.prettyConsole.logUnsafe('Database name is not set. For safe operation, the DB_NAME should be specified. Continuing with default name.', this.defParams.database);
         }
-        if (!process.env.DB_PASSWORD) {
+        if (!params.password) {
             this.prettyConsole.logUnsafe('Database password is not set. For safe operation, the DB_PASSWORD should be specified. Continuing with default password.', this.defParams.password);
         }
-        if (!process.env.DB_PORT) {
+        if (!params.port) {
             this.prettyConsole.logUnsafe('Database port is not set. For safe operation, the DB_PORT should be specified. Continuing with default port.', this.defParams.port);
         }
 
         this.pool = mariadb.createPool({
-            user: process.env.DB_USER || 'default_user',
-            host: process.env.DB_HOST || 'localhost',
-            database: process.env.DB_NAME || 'waxteras',
-            password: process.env.DB_PASSWORD || 'default_password',
-            port: parseInt(process.env.DB_PORT || '3306', 10), // Default MariaDB port
+            user: params.user,
+            host: params.host,
+            database: params.database,
+            password: params.password,
+            port: params.port ? parseInt(params.port, 10) : 3306, // Default MariaDB port
             connectionLimit: 10, // Increase the connection limit
             acquireTimeout: 10000 // Increase the acquire timeout
         });

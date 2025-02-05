@@ -31,9 +31,7 @@ class UserAuth {
 
   constructor() {
     this.db = new Database();
-    this.saltRounds = 10;
-    this.generateUser('isak', 'a@a.com', 'pass');
- 
+    this.saltRounds = 10; 
 
 
     if (!process.env.JWT_SECRET_KEY || process.env.JWT_SECRET_KEY === 'default_secret_key') {
@@ -111,12 +109,12 @@ class UserAuth {
     }
   }
 
-  async generateUser(username: string, email: string, password: string): Promise<boolean> {
+  async generateUser(username: string, email: string, password: string, permission_level: number): Promise<boolean> {
     const hashedPassword = await this.hashPassword(password);
     try {
       await this.db.query(
-        'INSERT INTO users (username, email, password, permission_level) VALUES (?, ?, ?, -1);',
-        [username, email, hashedPassword]
+        'INSERT INTO users (username, email, password, permission_level) VALUES (?, ?, ?, ?);',
+        [username, email, hashedPassword, permission_level]
       );
       if (process.env.DEBUG) this.prettyConsole.logSuccess('User created successfully');
       return true;

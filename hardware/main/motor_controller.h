@@ -51,7 +51,7 @@ public:
 
   /**
    * @brief Function to control the speed of the motor
-   * @param speed duty_cycle of the pwm output, by default, the range is [0-255] (uint8_t)
+   * @param speed duty_cycle of the pwm output, by default, the range is [0-255] (uint8_t) 
    */
   esp_err_t set_speed(int speed) {
     // Ensure duty cycle is within the valid range

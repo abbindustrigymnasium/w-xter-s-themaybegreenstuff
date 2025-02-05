@@ -30,15 +30,15 @@
         <!-- Control of the Greenhouse -->
         <div class="inline">
             <q-btn @click="closeHatch" label="Close" class="same-size-btn" />
-            <q-slider v-model="hatch" :min="1" :max="255" label="Hatch" />
+            <q-slider v-model="hatch" :min="0" :max="255" label="Hatch" />
         </div>
         <div class="inline">
             <q-btn @click="stopFan" label="Stop" class="same-size-btn" />
-            <q-slider v-model="fan" :min="1" :max="255" label="Fan" />
+            <q-slider v-model="fan" :min="0" :max="255" label="Fan" />
         </div>
         <div class="inline">
             <q-btn @click="stopPump" label="Stop" class="same-size-btn" />
-            <q-slider v-model="pump" :min="1" :max="255" label="Pump" />
+            <q-slider v-model="pump" :min="0" :max="255" label="Pump" />
         </div>
         <q-btn label="Send" @click="sendData" />
     </div>
@@ -60,13 +60,13 @@ export default {
                 { id: 1, hatch_embedded: 1, fan_embedded: 1, pump_embedded: 1 }
             ],
             // Slider-controlled values
-            hatch: 1, 
-            fan: 1,
-            pump: 1,
+            hatch: 0, 
+            fan: 0,
+            pump: 0,
             // Current embedded state
-            hatch_embedded: 1,
-            fan_embedded: 1,
-            pump_embedded: 1,
+            hatch_embedded: 0,
+            fan_embedded: 0,
+            pump_embedded: 0,
             // WebSocket settings
             socket: null, 
             socket_embedded: null, 
@@ -135,22 +135,25 @@ export default {
     methods: {
         sendData() {
             if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-                const json_obj = { msg: [this.hatch, this.fan, this.pump], forward_to: ['embedded_device'] };
+                const json_obj = { 
+                    msg: [String(this.hatch), String(this.fan), String(this.pump)], 
+                    forward_to: ['embedded_device'] 
+                };
                 this.socket.send(JSON.stringify(json_obj));
             } else {
                 console.warn('WebSocket is not open. Data not sent.');
             }
         },
         closeHatch() {
-            this.hatch = 1;
+            this.hatch = 0;
             this.sendData();
         },
         stopFan() {
-            this.fan = 1;
+            this.fan = 0;
             this.sendData();
         },
         stopPump() {
-            this.pump = 1;
+            this.pump = 0;
             this.sendData();
         },
     },

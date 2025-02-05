@@ -160,7 +160,7 @@ class WebSocketHandler {
 
     // ------------------------------ Websocket ------------------------------
     private clients = new Map<typeof client_types[number], Map<string, client>>();    ///< Map of clients connected to the server
-    //TODO: make private
+    
     private DEBUG: boolean = false;                                                   ///< Debug mode flag (simplifies since we don't have to check process.env.DEBUG every time)                                                  ///< WebSocket server instance 
     private wss!: WebSocketServer;                                                    ///< WebSocket server, set in the initialize function, thus ignoring the undefined error is safe
     // -----------------------------------------------------------------------
@@ -250,12 +250,13 @@ class WebSocketHandler {
      * @param message The message to broadcast
      */
     private async broadCastToClientType(clientType: typeof client_types[number], message: string) : Promise<void> {
+        console.log(message);
         // Get the clients map for the specified client type
         // TODO: Optimize
         const clientsMap = this.clients.get(clientType);
         if (clientsMap) {
             clientsMap.forEach((client: client) => {
-                client.send(message);
+            client.send(message.toString());
             });
         }
     }
@@ -304,11 +305,12 @@ class WebSocketHandler {
 
         // Forward the message to the specified client(s)
         forward_to.forEach((clientType: typeof client_types[number]) => {
+
             if (msg!.toString() !== this.lastMessages.get(clientType)!.toString()) {
                 this.broadCastToClientType(clientType, msg);
                 this.DEBUG && this.prettyConsole.logInfo(`Forwarding message to: ${clientType}`);
 
-                this.lastMessages.set(clientType, msg); ///< Update the last message
+                this.lastMessages.set(clientType, msg.toString()); ///< Update the last message
             } else {
                 this.DEBUG && this.prettyConsole.logInfo(`Not forwarding message to: ${clientType} - Message is the same as the last message`);
             }
