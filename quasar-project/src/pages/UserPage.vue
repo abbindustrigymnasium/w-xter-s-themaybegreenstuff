@@ -4,17 +4,17 @@
             <h1>The maybe green stuff</h1>
         </div>
 
-        <span class="row">
+        <div class="row">
             <div class="infobox">
                 <div class="info"></div>
             </div>
             
             <div class="picturebox">
-                <div id="pic1"> </div>
-                <div id="pic2"> </div>
-                <div id="pic3"> </div>        
+                <div id="pic1">  </div>
+                <div id="pic2">  </div>
+                <div id="pic3">  </div>        
             </div>
-        </span>
+        </div>
     </body>
   </template>
 
@@ -51,6 +51,7 @@ body {
     display: flex;
     justify-content: center;
     flex-direction: column;
+    text-align: center;
 }
 
 h1 { 
@@ -69,7 +70,9 @@ h1 {
 }
 
 .row {
+    display: flex;
     flex-direction: row;
+    align-items: center;
 }
 
 .infobox {
@@ -81,28 +84,56 @@ h1 {
     border-radius: 20px;
 }
 
+.picturebox {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    gap: 10px;
+}
+
 #pic1 {
+    background-image: url("../assets/växthus.jpg");
+    background-size: contain;
     background-color: white;
-    width: 150px;
-    height: 150px;
-    border: 10px;
+    width: 200px;
+    height: 200px;
+    border: 5px solid white; 
     border-radius: 100px;
+    position: absolute;
+    left: 30px;
+    top: 10px;
+    z-index: 2;
 }
 
 #pic2 {
-    background-color: white;
+    background-image: url("../assets/gröngrid.jpg");
+    background-size:cover;
+    background-repeat: no-repeat;
     width: 200px;
     height: 300px;
-    margin: 60px 50px 50px;
-    border: 10px;
+    margin: 60px 150px 50px;
+    border: 5px solid white;
     border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
 }
 
 #pic3 {
+    background-image: url("../assets/vattenkanna.png");
+    background-size: contain;
     background-color: white;
     width: 150px;
     height: 150px;
-    border: 10px;
+    border: 5px solid white;
     border-radius: 100px;
+    position: absolute; 
+    bottom: 0px;
+    left: 80px;
+    bottom: 20px;
+    z-index: 2;
 }
 </style>
