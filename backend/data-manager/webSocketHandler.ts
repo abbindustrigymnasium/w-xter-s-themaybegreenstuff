@@ -12,13 +12,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { URL } from 'url';
 import os from 'os';
 import jwt from 'jsonwebtoken';
-
-// TODO: Remove this when done testing
+import Database from './databases';
 import dotenv from 'dotenv';
-import { format, parse } from 'path';
-import { ClientRequest } from 'http';
 
 
+// Load environment variables from .env file
+dotenv.config({ path: '../../.dev.env' });
 
 let PrettyConsole: any; ///< PrettyConsole class for logging
 /**
@@ -139,7 +138,10 @@ interface client extends WebSocket {
 const client_types = [                                                                ///< Types of clients that can connect to the server
     'web_client', 
     'embedded_device', 
-    'console_client'] as const;
+    'console_client',
+    'graph_component', ///< This works in mysterious ways
+    'val_database'     ///< This is not a real client, but is used to store the values in the database
+] as const;
 
 /**
  * @brief WebSocketHandler class to handle WebSocket connections
@@ -148,12 +150,15 @@ const client_types = [                                                          
 class WebSocketHandler {
     // -------------------------- Get prettyConsole --------------------------
     private prettyConsole: any;                                                       ///< PrettyConsole class for logging
+    // ----------------------- Create Database Instance ----------------------
+    private db = new Database();                                                      ///< Database instance for storing and retriving temp and humidity values
     // ------------------------ Settable Class Params ------------------------
     public ErrorIfValueOutOfRange: boolean = true;                                    ///< If true, the class will throw an error if a value is out of range, instead of clamping it to the nearest value
     public JWTSecretKey: string = 'your_secret_key';                                  ///< Secret key for JWT token generation (MAKE SURE TO SET THIS TO A SECURE VALUE)
     private port: number;                                                             ///< Port for the WebSocket , set using the constructor
     // ---------------------------- Server -> OUT  ---------------------------
     private lastMessages = new Map<typeof client_types[number], string>               ///< Last message sent to each client type
+    private th_cache: any[] = [];                                                     ///< Cache for temperature and humidity values [date, temp, hum]   
     // ---------- OUT -> Server (These get stored in a mysql table) ----------
     private temp_newest: number = -1;                                                 ///< Newest temperature value
     private hum_newest: number = 1;                                                   ///< Newest humidity value
@@ -179,12 +184,15 @@ class WebSocketHandler {
             this.lastMessages.set(type, ''); ///< Initialize the last message to an empty string
         });
 
-
         // Load PrettyConsole
         await loadPrettyConsole().then(prettyConsole => {
             this.prettyConsole = prettyConsole;
         });
         
+        // Cache the days temperature and humidity values
+        this.th_cache = await this.db.query(`SELECT * FROM temp_hum WHERE DATE(created_at) = CURDATE() ORDER BY id;`);
+        this.prettyConsole.logInfo(`Loaded ${this.th_cache.length} values into the cache`);
+
         // start an express server
         const server = app.listen(this.port, () => {
             this.DEBUG && this.prettyConsole.logSuccess(`Started embedded devices Express server`);
@@ -304,13 +312,34 @@ class WebSocketHandler {
         this.DEBUG && this.prettyConsole.logInfo(`Received message from client ${client_uuid}: ${msg} - Special forwarding to: ${forward_to}`);
 
         // Forward the message to the specified client(s)
-        forward_to.forEach((clientType: typeof client_types[number]) => {
-
-            if (msg!.toString() !== this.lastMessages.get(clientType)!.toString()) {
+        forward_to.forEach(async (clientType: typeof client_types[number]) => {
+            // Special case for the val_database client type (store the values in the database) and broadcast to graph_component
+            if (clientType === 'val_database') {
+                try {
+                    const [temp, hum] = msg.toString().split(',').map(Number);
+                    if (isNaN(temp) || isNaN(hum)) {
+                        throw new Error('Invalid temperature or humidity values');
+                    }
+                    this.prettyConsole.logInfo(`Temp: ${temp}, Hum: ${hum}`);
+                    // This is not optimal, since it makes unnecessary queries to the database (i.e. unnecessary operations to the hard drive)
+                    this.db.query(`INSERT INTO ${process.env.TEMPHUM_DB_NAME} (temp, hum) VALUES (?, ?)`, [temp, hum]);
+                    const new_instance = await this.db.query(`SELECT * FROM ${process.env.TEMPHUM_DB_NAME} ORDER BY id DESC LIMIT 1`);
+                    this.th_cache.push(new_instance);
+                    // Broadcast the new values to the graph component
+                    this.broadCastToClientType('graph_component', JSON.stringify(new_instance));
+                    this.DEBUG && this.prettyConsole.logSuccess('Stored values in the database and broadcasted to graph component');
+                }
+                catch {
+                    this.prettyConsole.logError('Error storing values in the database');
+                }
+            }
+            // Make sure the message is not a duplicate
+            else if (msg!.toString() !== this.lastMessages.get(clientType)!.toString()) {
                 this.broadCastToClientType(clientType, msg);
                 this.DEBUG && this.prettyConsole.logInfo(`Forwarding message to: ${clientType}`);
 
                 this.lastMessages.set(clientType, msg.toString()); ///< Update the last message
+            // Ignore duplicate messages (in most cases)
             } else {
                 this.DEBUG && this.prettyConsole.logInfo(`Not forwarding message to: ${clientType} - Message is the same as the last message`);
             }
@@ -345,23 +374,13 @@ class WebSocketHandler {
             this.prettyConsole.logInfo(`Sending last message to embedded device: ${this.lastMessages.get(userType as typeof client_types[number])}`);
             socket.send(this.lastMessages.get(userType as typeof client_types[number])!);
         }
+
+        // Send the cache to graph components
+        if (userType === 'graph_component') {
+            this.prettyConsole.logInfo(`Sending cache to graph component`);
+            socket.send(JSON.stringify(this.th_cache));
+        }
     }        
 }
-
-//TODO: Remove this when done testing
-// ---------------------------- For Debugging ----------------------------
-
-
-// Load environment variables from .env file
-dotenv.config({ path: '../../.dev.env' });
-console.log('Loaded environment variables from .dev.env');
-console.log('DEBUG:', process.env.DEBUG);
-
-let wsh = new WebSocketHandler();
-(async () => {
-    await wsh.initialize();
-    console.log('WebSocketHandler created');
-})();
-
 
 export default WebSocketHandler;

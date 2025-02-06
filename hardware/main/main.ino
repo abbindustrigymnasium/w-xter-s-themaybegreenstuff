@@ -1,18 +1,21 @@
+//#include "74hc595n_4bit_status_display.h" // Not required
 
-//#include "74hc595n_4bit_status_display.h" Not required
+#include <DHT.h>
+// Define the DHT pin and sensor type
+#define DHTPIN  21        // DHT11 data pin
+#define DHTTYPE DHT11     // DHT11 sensor type
 
 #if defined(ESP32)
-#include <WiFi.h> // ESP32 WiFi library
-#include "motor_controller.h" // esp32 pwm controller
+  #include <WiFi.h> // ESP32 WiFi library
+  #include "motor_controller.h" // esp32 pwm controller
 #elif defined(ESP8266)
-#include <ESP8266WiFi.h> // ESP8266 WiFi library
-#include "dc_motor_controller.h"
+  #include <ESP8266WiFi.h> // ESP8266 WiFi library
+  #include "dc_motor_controller.h"
 #endif
 
 #define DEBUG ///< Output debug messages
 
 #include <ArduinoWebsockets.h> // WebSocket library
-
 
 using namespace websockets;
 
@@ -23,23 +26,22 @@ const char* password = "mittwifiarsabra";
 // WebSocket server details
 const char* server_url = "ws://10.22.5.5:3000/?type=embedded_device"; // WebSocket server URL 
 
-
 #if defined(ESP32)
 // Create an instance of MotorController
-MotorController motor(21, 0, 5000, LEDC_TIMER_8_BIT);
-MotorController pump(19, 0, 5000, LEDC_TIMER_8_BIT);
+MotorController motor(23, LEDC_CHANNEL_0, 5000, LEDC_TIMER_8_BIT);
+MotorController pump(18, LEDC_CHANNEL_1, 5000, LEDC_TIMER_8_BIT);
 
 #elif defined(ESP8266)
-motorController motor()
+motorController motor();
 #endif
-// Create a websocket client instance
+
+// Create a WebSocket client instance
 WebsocketsClient client;
 
+// Initialize DHT sensor
+DHT dht(DHTPIN, DHTTYPE);
 
-// Had timing issues I didn't feel like fixing. Since it's not a requirenment, it's left out
-//StatusDisplay sd(4,5,18);
-
-
+// Structure to hold the greenhouse parameters
 struct greenhouse_params {
     uint8_t hatch;
     uint8_t fan;
@@ -49,7 +51,6 @@ struct greenhouse_params {
 };
 
 greenhouse_params gp; ///< struct instance to store the values [1,255] for each controllable item
-
 
 // Make sure inputs are in the span [0, 255] 
 void parse_post(const String& res) {  
@@ -76,51 +77,38 @@ void parse_post(const String& res) {
 #endif // DEBUG
 }
 
+// Function to read sensor data and send it over the WebSocket
+void read_sensor_data(void* parameter) {
+  while (true) {
+    // Read temperature as Celsius
+    float temperature = dht.readTemperature();
+    
+    // Read humidity
+    float humidity = dht.readHumidity();
+    
+    // Check if readings failed and exit early (if so)
+    if (isnan(temperature) || isnan(humidity)) {
+      Serial.println("Failed to read from DHT sensor!");
+    } else {
+      // Print the results to the Serial Monitor
+      Serial.print("Temperature: ");
+      Serial.print(temperature);
+      Serial.print(" °C  ");
+      Serial.print("Humidity: ");
+      Serial.print(humidity);
+      Serial.println(" %");
 
-
-// --------------- Helper Functions for diode_info_handler ---------------
-struct diode_gpio_instance {
-  uint8_t diode_id;
-  uint8_t gpio_id;
-};
-
-const diode_gpio_instance diode_gpio_map[] = {
-  {1, 18},
-  {2, 19},
-  {3, 20},
-};
-const size_t num_diodes = sizeof(diode_gpio_map) / sizeof(diode_gpio_map[0]);
-int get_gpio(uint8_t diode_id) {
-  for(size_t i = 0 ; i < num_diodes; i++) {
-    if(diode_gpio_map[i].diode_id == diode_id) {
-      return diode_gpio_map[i].gpio_id;
+      // Send data over WebSocket (you can modify the data format as needed)
+      String message = "{\"msg\":[\"" + String(temperature) + "\",\"" + String(humidity) + "\"],\"forward_to\":[\"val_database\"]}";
+      client.send(message);
     }
+
+    // Delay for 5 seconds before reading again
+    vTaskDelay(5000 / portTICK_PERIOD_MS); // 5 seconds
   }
-  return -1;
-}
-/** 
- * @brief Function intended to help the end user by giving an led interface displaying status of various of the programs function
- * @note diode 1 is for ws_connected_status
- * @note diode 2 is for ws_msg_recieved
- */
-void diode_info_handler(uint8_t diode, bool status, bool flash = false, uint32_t flash_time = 500) {
-  const uint8_t gpio_pin = get_gpio(diode);
-  if (gpio_pin == -1) {
-#ifdef DEBUG
-    Serial.println("Programmed failed to write to diode: " + String(diode) + " no valid gpio convertion in diode_gpio_map");
-#endif // DEBUG
-    return;
-  }
-  pinMode(gpio_pin, OUTPUT);
-  digitalWrite(gpio_pin, status);
-  if(!flash) return; // if flash == false; return
-  delay(flash_time);
-  digitalWrite(gpio_pin, (!status));
-  return;
 }
 
 void setup() {
-  diode_info_handler(1, true); ///< Show not connected to web socket server
   Serial.begin(115200);
   delay(10);
 
@@ -135,20 +123,18 @@ void setup() {
   Serial.println("\nWi-Fi connected");
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
+
   // Connect to WebSocket server
   Serial.println("Connecting to WebSocket server...");
   client.onMessage([](WebsocketsMessage message) {
     parse_post(message.data());
-    diode_info_handler(2, true, true, 200);
   });
 
   client.onEvent([](WebsocketsEvent event, String data) {
     if (event == WebsocketsEvent::ConnectionOpened) {
       Serial.println("WebSocket connection opened");
-      diode_info_handler(1, false);
     } else if (event == WebsocketsEvent::ConnectionClosed) {
       Serial.println("WebSocket connection closed");
-      diode_info_handler(1, true);
     } else if (event == WebsocketsEvent::GotPing) {
       Serial.println("Received Ping");
     } else if (event == WebsocketsEvent::GotPong) {
@@ -158,17 +144,31 @@ void setup() {
 
   bool connected = client.connect(server_url);
   if (connected) {
-      Serial.println("WebSocket client connected");
+    Serial.println("WebSocket client connected");
   } else {
-      Serial.println("WebSocket client connection failed");
+    Serial.println("WebSocket client connection failed");
   }
 
-  // Motor init
+  // Motor initialization
+#if defined(ESP32)
   if (motor.init() == ESP_OK) {
     Serial.println("Motor controller initialized successfully.");
   } else {
     Serial.println("Motor controller initialization failed.");
   }
+
+  // Pump initialization 
+  if (pump.init() == ESP_OK) {
+    Serial.println("Pump controller initialized successfully.");
+  } else {
+    Serial.println("Pump controller initialization failed.");
+  }
+#endif
+
+  dht.begin();
+
+  // Create the task to read sensor data
+  xTaskCreate(read_sensor_data, "ReadSensorData", 4096, NULL, 1, NULL);
 }
 
 void loop() {
@@ -178,10 +178,24 @@ void loop() {
   // Keep the WebSocket connection alive
   client.poll();
 
+  // --- Reconnection Logic ---
+  if (!client.connected()) {
+    Serial.println("WebSocket connection lost. Attempting to reconnect...");
+    // Try to reconnect. If the connection fails, wait a bit before retrying.
+    if (client.connect(server_url)) {
+      Serial.println("Reconnected to WebSocket server.");
+    } else {
+      Serial.println("Reconnection failed. Will retry shortly.");
+      delay(5000); // Wait 5 seconds before trying again.
+      return; // Skip the rest of the loop to avoid running control code while disconnected.
+    }
+  }
+  // --- End Reconnection Logic ---
+
 #if defined(ESP32)
-  // Set motor speed according to greenhouse params instance
-  if(gp.fan > 1) {
-    if (!motor_is_spinning_) { ///< requred to "kickstart" the motor if it's not already spinning
+  // Set motor speed according to greenhouse parameters
+  if (gp.fan > 1) {
+    if (!motor_is_spinning_) {
       motor_is_spinning_ = true;
       motor.set_speed(255);
       delay(100);
@@ -192,9 +206,8 @@ void loop() {
     motor_is_spinning_ = false;
   }
 
-
-  if(gp.pump > 1) {
-    if(!pump_is_spinning_) {
+  if (gp.pump > 1) {
+    if (!pump_is_spinning_) {
       pump_is_spinning_ = true;
       pump.set_speed(255);
       delay(100);
@@ -204,9 +217,5 @@ void loop() {
     pump.stop();
     pump_is_spinning_ = false;
   }
-
-#elif defined(ESP8266)
-
 #endif
-
 }

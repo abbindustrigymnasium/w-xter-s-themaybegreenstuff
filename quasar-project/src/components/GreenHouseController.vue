@@ -85,54 +85,52 @@ export default {
         // Listen for messages from the embedded device
         this.socket_embedded.onmessage = async (event) => {
             try {
-                // Decode the blob into a text string
                 let rawData = event.data; // Get raw data
                 let data;
 
-                // Ensure we interpret it as ASCII (force correct encoding)
+                // Decode incoming data as an ASCII string
                 if (typeof rawData === 'string') {
                     data = rawData;
                 } else if (rawData instanceof Blob) {
-                    // Convert Blob to Uint8Array and decode as ISO-8859-1
                     const arrayBuffer = await rawData.arrayBuffer();
                     const textDecoder = new TextDecoder('iso-8859-1');
                     data = textDecoder.decode(new Uint8Array(arrayBuffer));
                 } else {
-                    throw new Error('Unknown data format received');
+                    console.error("Error: Unknown data format received");
+                    return;
                 }
 
-                // Ensure the data is exactly 3 characters
-                if (data.length === 3) {
-                    // Convert ASCII characters to numeric values
-                    const hatchRaw = data.charCodeAt(0); // Hatch
-                    const fanRaw = data.charCodeAt(1);   // Fan
-                    const pumpRaw = data.charCodeAt(2);  // Pump
+                // Parse values assuming the format: hatch,fan,pump
+                const values = data.split(',').map(Number);
+                if (values.length === 3 && values.every(n => !isNaN(n))) {
+                    // Clamp values to range [0, 255]
+                    this.hatch_embedded = Math.min(255, Math.max(0, values[0]));
+                    this.fan_embedded = Math.min(255, Math.max(0, values[1]));
+                    this.pump_embedded = Math.min(255, Math.max(0, values[2]));
 
-                    // Safely map the values to a 0-100% range
-                    this.hatch_embedded = Math.round((hatchRaw / 255) * 100);
-                    this.fan_embedded = Math.round((fanRaw / 255) * 100);
-                    this.pump_embedded = Math.round((pumpRaw / 255) * 100);
-
-                    // Update the table row with the new values
-                    this.rows[0].hatch_embedded = this.hatch_embedded;
-                    this.rows[0].fan_embedded = this.fan_embedded;
-                    this.rows[0].pump_embedded = this.pump_embedded;
+                    // Update the table row with new values
+                    this.rows[0].hatch_embedded = this.map(this.hatch_embedded, 0, 255, 0, 100);
+                    this.rows[0].fan_embedded = this.map(this.fan_embedded, 0, 255, 0, 100);
+                    this.rows[0].pump_embedded = this.map(this.pump_embedded, 0 , 255, 0, 100);
 
                     console.log(
-                        'Updated Values:',
+                        "Updated Values:",
                         this.hatch_embedded,
                         this.fan_embedded,
                         this.pump_embedded
                     );
                 } else {
-                    console.error('Received data is not a valid 3-character blob:', data);
+                    console.error("Error: Invalid input format", data);
                 }
             } catch (error) {
-                console.error('Error processing received data:', error);
+                console.error("Error processing received data:", error);
             }
         };
     },
     methods: {
+        map(value, fromLow, fromHigh, toLow, toHigh) {
+            return Math.round(((value - fromLow) * (toHigh - toLow)) / (fromHigh - fromLow) + toLow);
+        },
         sendData() {
             if (this.socket && this.socket.readyState === WebSocket.OPEN) {
                 const json_obj = { 

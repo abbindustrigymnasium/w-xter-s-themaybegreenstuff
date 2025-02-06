@@ -1,167 +1,256 @@
 <template>
-    <q-card class="q-pa-md" flat bordered>
-      <q-card-section>
-        <div ref="chart" class="chart-container"></div>
+  <div class="q-pa-md">
+    <q-card flat bordered>
+      <q-inner-loading :showing="!isConnected">
+        <q-spinner-dots size="50px" color="primary" />
+      </q-inner-loading>
+      <q-card-section style="height: 400px;">
+        <canvas ref="chart"></canvas>
       </q-card-section>
     </q-card>
-  </template>
-  
-  <script>
-  import * as d3 from "d3";
-  
-  export default {
-    name: "GraphGeneric",
-    props: {
-      data: {
-        type: Array,
-        required: false,
-        default: () => [], // Default empty array
-      },
+  </div>
+</template>
+
+<script>
+import { Chart, registerables } from 'chart.js';
+import 'chartjs-adapter-date-fns';
+
+Chart.register(...registerables);
+
+export default {
+  name: 'GraphWebSocket',
+  data() {
+    return {
+      chartInstance: null,
+      socket: null,
+      // Holds a plain JavaScript array of data objects (non‑reactive)
+      chartData: [],
+      isConnected: false,
+      reconnectAttempts: 0,
+      maxReconnectAttempts: 5,
+      reconnectTimeout: null,
+      hasReceivedData: false,
+    };
+  },
+  methods: {
+    // Flattens nested arrays if necessary.
+    flattenData(data) {
+      return data.reduce((acc, item) => {
+        return acc.concat(Array.isArray(item) ? item : [item]);
+      }, []);
     },
-    data() {
-      return {
-        defaultData: [
-          { date: new Date(2021, 0, 1), temperature: 70 },
-          { date: new Date(2021, 0, 2), temperature: 69 },
-          { date: new Date(2021, 0, 3), temperature: 68 },
-          { date: new Date(2021, 0, 4), temperature: 69 },
-        ],
+
+    // (Re)creates the entire chart with the current data set.
+    renderChart(dataArray) {
+      if (!this.$refs.chart) {
+        console.error('Chart reference is not available.');
+        return;
+      }
+      const ctx = this.$refs.chart.getContext('2d');
+
+      // Destroy any existing chart instance.
+      if (this.chartInstance) {
+        this.chartInstance.destroy();
+      }
+
+      // Deep clone the data to remove any Vue reactivity.
+      const plainData = JSON.parse(JSON.stringify(dataArray));
+      const dataPoints = plainData.map(d => ({
+        x: new Date(d.created_at),
+        tempY: d.temp,
+        humY: d.hum,
+      }));
+
+      this.chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: [
+            {
+              label: 'Temperature (°C)',
+              data: dataPoints,
+              parsing: {
+                xAxisKey: 'x',
+                yAxisKey: 'tempY',
+              },
+              borderColor: 'red',
+              backgroundColor: 'rgba(255, 99, 132, 0.2)',
+              fill: false,
+              tension: 0,
+              pointRadius: 0,
+              borderWidth: 1,
+              // Assign temperature to the left y‑axis
+              yAxisID: 'y1',
+            },
+            {
+              label: 'Humidity (%)',
+              data: dataPoints,
+              parsing: {
+                xAxisKey: 'x',
+                yAxisKey: 'humY',
+              },
+              borderColor: 'blue',
+              backgroundColor: 'rgba(54, 162, 235, 0.2)',
+              fill: false,
+              tension: 0,
+              pointRadius: 0,
+              borderWidth: 1,
+              // Assign humidity to the right y‑axis
+              yAxisID: 'y2',
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          spanGaps: true,
+          scales: {
+            x: {
+              type: 'time',
+              time: { unit: 'minute' },
+              title: { display: true, text: 'Time' },
+              ticks: { autoSkip: false, maxRotation: 45, minRotation: 45 },
+            },
+            // Left y‑axis for Temperature:
+            y1: {
+              display: true, // we'll update this dynamically
+              type: 'linear',
+              position: 'left',
+              title: { display: true, text: 'Temperature (°C)' },
+            },
+            // Right y‑axis for Humidity:
+            y2: {
+              display: true, // we'll update this dynamically
+              type: 'linear',
+              position: 'right',
+              title: { display: true, text: 'Humidity (%)' },
+              grid: {
+                drawOnChartArea: false, // prevents grid lines from overlapping with y1
+              },
+            },
+          },
+          plugins: {
+            tooltip: { mode: 'index', intersect: false },
+            legend: {
+              position: 'top',
+              // Custom legend onClick handler to toggle axis visibility
+              onClick: (e, legendItem, legend) => {
+                const chart = legend.chart;
+                const datasetIndex = legendItem.datasetIndex;
+                const meta = chart.getDatasetMeta(datasetIndex);
+                // Toggle the hidden state for the clicked dataset.
+                meta.hidden = meta.hidden === null ? !chart.data.datasets[datasetIndex].hidden : null;
+                
+                // Check for each y‑axis if at least one dataset is visible.
+                let y1Visible = false;
+                let y2Visible = false;
+                chart.data.datasets.forEach((ds, idx) => {
+                  const meta = chart.getDatasetMeta(idx);
+                  if (ds.yAxisID === 'y1' && !meta.hidden) {
+                    y1Visible = true;
+                  }
+                  if (ds.yAxisID === 'y2' && !meta.hidden) {
+                    y2Visible = true;
+                  }
+                });
+                
+                // Set the axis display options accordingly.
+                chart.options.scales.y1.display = y1Visible;
+                chart.options.scales.y2.display = y2Visible;
+                chart.update();
+              },
+            },
+            decimation: { enabled: false },
+          },
+          interaction: { mode: 'nearest', axis: 'x', intersect: false },
+        },
+      });
+    },
+
+    setupWebSocket() {
+      this.socket = new WebSocket('ws://localhost:3000?type=graph_component');
+
+      this.socket.onopen = () => {
+        console.log('WebSocket connected');
+        this.isConnected = true;
+        this.reconnectAttempts = 0;
+      };
+
+      this.socket.onmessage = (event) => {
+        // The incoming data is always an array.
+        const rawData = JSON.parse(event.data);
+        // Flatten it in case any nested arrays exist.
+        const data = this.flattenData(rawData);
+
+        if (!this.hasReceivedData) {
+          // On first message: render the chart with the initial data.
+          this.hasReceivedData = true;
+          this.chartData = JSON.parse(JSON.stringify(data));
+          this.renderChart(this.chartData);
+        } else {
+          // For subsequent messages: add new data items.
+          data.forEach(item => {
+            this.chartData.push(JSON.parse(JSON.stringify(item)));
+          });
+          this.renderChart(this.chartData);
+        }
+      };
+
+      this.socket.onclose = () => {
+        this.isConnected = false;
+        this.handleReconnect();
+      };
+
+      this.socket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        this.isConnected = false;
       };
     },
-    computed: {
-      chartData() {
-        // Use defaultData if no valid data is provided
-        return Array.isArray(this.data) && this.data.length > 0 ? this.data : this.defaultData;
-      },
-    },
-    methods: {
-      drawChart() {
-        const data = this.chartData;
-  
-        // Exit early if no valid data
-        if (!data || data.length === 0) {
-          console.warn("No data available to render the chart.");
-          d3.select(this.$refs.chart).selectAll("*").remove(); // Clear the chart container
-          return;
-        }
-  
-        // Chart dimensions and margins
-        const width = 900;
-        const height = 500;
-        const marginTop = 20;
-        const marginRight = 20;
-        const marginBottom = 30;
-        const marginLeft = 60;
-  
-        // Define scales
-        const x = d3
-          .scaleUtc()
-          .domain(d3.extent(data, (d) => d.date))
-          .range([marginLeft, width - marginRight]);
-  
-        const y = d3
-          .scaleLinear()
-          .domain(d3.extent(data, (d) => d.temperature))
-          .nice()
-          .range([height - marginBottom, marginTop]);
-  
-        const color = d3.scaleSequential(y.domain(), d3.interpolateTurbo);
-  
-        // Line generator
-        const line = d3
-          .line()
-          .curve(d3.curveStep)
-          .defined((d) => !isNaN(d.temperature))
-          .x((d) => x(d.date))
-          .y((d) => y(d.temperature));
-  
-        // Clear existing content
-        d3.select(this.$refs.chart).selectAll("*").remove();
-  
-        // Create SVG container
-        const svg = d3
-          .select(this.$refs.chart)
-          .append("svg")
-          .attr("width", width)
-          .attr("height", height)
-          .attr("viewBox", [0, 0, width, height])
-          .attr("style", "max-width: 100%; height: auto;");
-  
-        // X-axis
-        svg
-          .append("g")
-          .attr("transform", `translate(0,${height - marginBottom})`)
-          .call(d3.axisBottom(x).ticks(width / 80).tickSizeOuter(0))
-          .call((g) => g.select(".domain").remove());
-  
-        // Y-axis
-        svg
-          .append("g")
-          .attr("transform", `translate(${marginLeft},0)`)
-          .call(d3.axisLeft(y))
-          .call((g) => g.select(".domain").remove())
-          .call((g) =>
-            g
-              .select(".tick:last-of-type text")
-              .append("tspan")
-              .text("°C")
+
+    handleReconnect() {
+      if (this.reconnectAttempts < this.maxReconnectAttempts) {
+        this.reconnectAttempts++;
+        this.reconnectTimeout = setTimeout(() => {
+          console.log(
+            `Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`
           );
-  
-        // Gradient
-        const gradientId = "gradient-" + Math.random().toString(36).substring(2);
-        svg
-          .append("linearGradient")
-          .attr("id", gradientId)
-          .attr("gradientUnits", "userSpaceOnUse")
-          .attr("x1", 0)
-          .attr("y1", height - marginBottom)
-          .attr("x2", 0)
-          .attr("y2", marginTop)
-          .selectAll("stop")
-          .data(d3.ticks(0, 1, 10))
-          .join("stop")
-          .attr("offset", (d) => d)
-          .attr("stop-color", color.interpolator());
-  
-        // Line path
-        svg
-          .append("path")
-          .datum(data)
-          .attr("fill", "none")
-          .attr("stroke", `url(#${gradientId})`)
-          .attr("stroke-width", 1.5)
-          .attr("stroke-linejoin", "round")
-          .attr("stroke-linecap", "round")
-          .attr("d", line);
-      },
+          this.setupWebSocket();
+        }, 3000);
+      } else {
+        console.error('Max reconnection attempts reached');
+      }
     },
-    mounted() { // Call drawChart when the component mounts
-      this.drawChart();
-    },
-    watch: {
-      data: {
-        handler: "drawChart", // Redraw the chart whenever data changes
-        immediate: true, // Ensure the chart renders immediately on mount
-      },
-    },
-  };
-  </script>
-  
-  <style scoped>
-  .chart-container {
-    width: 100%;
-    overflow-x: auto;
-  }
+  },
 
-  .chart-container :deep(text) {
-  font-size: 20px;
-  fill: black;
+  mounted() {
+    this.$nextTick(() => {
+      if (this.$refs.chart) {
+        this.setupWebSocket();
+      }
+    });
+  },
+
+  beforeUnmount() {
+    if (this.socket) {
+      this.socket.close();
+    }
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+    }
+    if (this.chartInstance) {
+      this.chartInstance.destroy();
+    }
+  },
+};
+</script>
+
+<style scoped>
+.q-pa-md {
+  gap: 20px;
+  border-radius: 10px;
 }
-
-  .q-pa-md {
-    width: 50%;
-    margin: 20px;
-    border-radius: 10px;
-  }
-  </style>
-  
+canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+</style>
