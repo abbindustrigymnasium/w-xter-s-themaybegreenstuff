@@ -248,6 +248,7 @@ export default {
 .q-pa-md {
   gap: 20px;
   border-radius: 10px;
+  width: 100%;
 }
 canvas {
   width: 100% !important;

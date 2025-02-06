@@ -135,6 +135,11 @@ app.post('/createUser', async (req: any, res: any) => {
     }
 });
 
+// Start the Express server
+const server = app.listen(PORT, () => {
+    prettyConsole.logSuccess(`Started website backend server`);
+});
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// Websocket for various communication requirements
