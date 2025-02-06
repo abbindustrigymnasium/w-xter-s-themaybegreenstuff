@@ -1,96 +1,186 @@
-//#include "74hc595n_4bit_status_display.h" // Not required
+/**
+ * @file main.cpp
+ * @brief Greenhouse Controller Application
+ *
+ * This application reads temperature and humidity data from a DHT sensor,
+ * sends the sensor data to a WebSocket server, and controls actuators
+ * (fan motor and water pump) based on commands received from the server.
+ *
+ * Supported platforms: ESP32 (ESP8266 support may require further modifications).
+ */
 
+#include <Arduino.h>
 #include <DHT.h>
-// Define the DHT pin and sensor type
-#define DHTPIN  21        // DHT11 data pin
-#define DHTTYPE DHT11     // DHT11 sensor type
+
+// DHT Sensor configuration
+#define DHTPIN  21        ///< Digital pin connected to the DHT sensor.
+#define DHTTYPE DHT11     ///< DHT sensor type (DHT11).
 
 #if defined(ESP32)
-  #include <WiFi.h> // ESP32 WiFi library
-  #include "motor_controller.h" // esp32 pwm controller
+  #include <WiFi.h>                 ///< ESP32 WiFi library.
+  #include "motor_controller.h"     ///< Motor controller library for ESP32.
 #elif defined(ESP8266)
-  #include <ESP8266WiFi.h> // ESP8266 WiFi library
-  #include "dc_motor_controller.h"
+  #include <ESP8266WiFi.h>          ///< ESP8266 WiFi library.
+  #include "dc_motor_controller.h"  ///< Motor controller library for ESP8266.
+#else
+  #error "Unsupported platform! This code supports only ESP32 and ESP8266."
 #endif
 
-#define DEBUG ///< Output debug messages
-
-#include <ArduinoWebsockets.h> // WebSocket library
-
+#include <ArduinoWebsockets.h>       ///< WebSocket client library.
 using namespace websockets;
 
-// Wi-Fi credentials
-const char* ssid = "Hitachigymnasiet_2.4";
-const char* password = "mittwifiarsabra";
+// Uncomment the following line to enable debug messages.
+// #define DEBUG
 
-// WebSocket server details
-const char* server_url = "ws://10.22.5.5:3000/?type=embedded_device"; // WebSocket server URL 
+// Wi-Fi credentials
+const char* ssid     = "Hitachigymnasiet_2.4";  ///< Your Wi-Fi SSID.
+const char* password = "mittwifiarsabra";        ///< Your Wi-Fi password.
+
+// WebSocket server configuration
+const char* server_url = "ws://10.22.5.5:3000/?type=embedded_device";  ///< WebSocket server URL.
 
 #if defined(ESP32)
-// Create an instance of MotorController
-MotorController motor(23, LEDC_CHANNEL_0, 5000, LEDC_TIMER_8_BIT);
-MotorController pump(18, LEDC_CHANNEL_1, 5000, LEDC_TIMER_8_BIT);
+  /// Motor controller instance for the fan (connected to pin 23).
+  MotorController motor(23, LEDC_CHANNEL_0, 5000, LEDC_TIMER_8_BIT);
 
+  /// Motor controller instance for the pump (connected to pin 18).
+  MotorController pump(18, LEDC_CHANNEL_1, 5000, LEDC_TIMER_8_BIT);
 #elif defined(ESP8266)
-motorController motor();
+  // For ESP8266, instantiate the motor controller as needed.
+  MotorController motor;  // Placeholder. Actual initialization may vary.
 #endif
 
-// Create a WebSocket client instance
+/// WebSocket client instance.
 WebsocketsClient client;
 
-// Initialize DHT sensor
+/// DHT sensor instance.
 DHT dht(DHTPIN, DHTTYPE);
 
-// Structure to hold the greenhouse parameters
-struct greenhouse_params {
-    uint8_t hatch;
-    uint8_t fan;
-    uint8_t pump;
+/**
+ * @brief Structure to hold greenhouse actuator parameters.
+ *
+ * Each parameter is an 8-bit value in the range [0, 255] that represents the desired
+ * state or speed for the corresponding actuator.
+ */
+struct GreenhouseParams {
+  uint8_t hatch; ///< Hatch control parameter (unused in actuator logic).
+  uint8_t fan;   ///< Fan speed control parameter.
+  uint8_t pump;  ///< Pump speed control parameter.
 
-    greenhouse_params() : hatch(1), fan(1), pump(1) {} // Initialize all values to 1 with a constructor 
+  /**
+   * @brief Constructor: Initializes all parameters to 1.
+   */
+  GreenhouseParams() : hatch(1), fan(1), pump(1) {}
 };
 
-greenhouse_params gp; ///< struct instance to store the values [1,255] for each controllable item
+/// Global instance for storing greenhouse parameters.
+GreenhouseParams gp;
 
-// Make sure inputs are in the span [0, 255] 
-void parse_post(const String& res) {  
-  // Extract values assuming structure: hatch,fan,pump
-  uint8_t hatch, fan, pump;
-  if (sscanf(res.c_str(), "%hhu,%hhu,%hhu", &hatch, &fan, &pump) == 3) {
-    // Clamp values to range [0, 255]
-    gp.hatch = constrain(hatch, 0, 255);
-    gp.fan = constrain(fan, 0, 255);
-    gp.pump = constrain(pump, 0, 255);
-  } else {
-    Serial.println("Error: Invalid input format");
-    return;
+#if defined(ESP32)
+  // Static variables to hold the last applied actuator values.
+  static uint8_t lastFan   = 0;
+  static uint8_t lastPump  = 0;
+  static bool motorIsSpinning = false;
+  static bool pumpIsSpinning  = false;
+#endif
+
+/**
+ * @brief Updates the actuators based on new parameters.
+ *
+ * This function is called when new parameters are received via WebSocket.
+ * It only updates the actuator states if the parameter values have changed.
+ */
+void updateActuators() {
+#if defined(ESP32)
+  // Update fan actuator only if the value has changed.
+  if (gp.fan != lastFan) {
+    if (gp.fan > 1) {
+      if (!motorIsSpinning) {
+        motorIsSpinning = true;
+        motor.set_speed(255);
+        delay(100); // Brief delay to allow the motor to start.
+      }
+      // Map incoming value [1, 255] to an effective speed range [100, 255].
+      motor.set_speed(map(gp.fan, 1, 255, 100, 255));
+    } else {
+      motor.stop();
+      motorIsSpinning = false;
+    }
+    lastFan = gp.fan;
   }
 
-#ifdef DEBUG
-  // Debug print of the received string
-  Serial.println("Received: " + res);
-
-  // Debug print of the extracted values
-  Serial.println("Pump: " + String(gp.pump));
-  Serial.println("Fan: " + String(gp.fan));
-  Serial.println("Hatch: " + String(gp.hatch));
-#endif // DEBUG
+  // Update pump actuator only if the value has changed.
+  if (gp.pump != lastPump) {
+    if (gp.pump > 1) {
+      if (!pumpIsSpinning) {
+        pumpIsSpinning = true;
+        pump.set_speed(255);
+        delay(100); // Brief delay to allow the pump to start.
+      }
+      // Map incoming value [1, 255] to an effective speed range [100, 255].
+      pump.set_speed(map(gp.pump, 1, 255, 100, 255));
+    } else {
+      pump.stop();
+      pumpIsSpinning = false;
+    }
+    lastPump = gp.pump;
+  }
+#endif
 }
 
-// Function to read sensor data and send it over the WebSocket
-void read_sensor_data(void* parameter) {
-  while (true) {
-    // Read temperature as Celsius
+/**
+ * @brief Parses a comma-separated string to update greenhouse parameters.
+ *
+ * The expected format of the input string is "hatch,fan,pump", where each value is an
+ * unsigned integer. Parsed values are clamped to the range [0, 255].
+ * If new values differ from the current ones, the actuator update is triggered.
+ *
+ * @param message The received command string.
+ */
+void parsePost(const String& message) {
+  uint8_t hatch, fan, pump;
+  if (sscanf(message.c_str(), "%hhu,%hhu,%hhu", &hatch, &fan, &pump) == 3) {
+    uint8_t newFan  = constrain(fan, 0, 255);
+    uint8_t newPump = constrain(pump, 0, 255);
+    gp.hatch = constrain(hatch, 0, 255);
+
+#ifdef DEBUG
+    Serial.println("Received: " + message);
+    Serial.println("Hatch: " + String(gp.hatch));
+    Serial.println("Fan:   " + String(newFan));
+    Serial.println("Pump:  " + String(newPump));
+#endif
+
+    // Update actuators only if the values have changed.
+    if (newFan != gp.fan || newPump != gp.pump) {
+      gp.fan  = newFan;
+      gp.pump = newPump;
+      updateActuators();
+    }
+  } else {
+    Serial.println("Error: Invalid input format");
+  }
+}
+
+/**
+ * @brief Task function to read sensor data periodically and send it over the WebSocket.
+ *
+ * This function reads temperature and humidity data from the DHT sensor every 5 seconds.
+ * If valid data is obtained, it formats the data as a JSON string and sends it to the
+ * WebSocket server.
+ *
+ * @param parameter Unused task parameter.
+ */
+void readSensorData(void* parameter) {
+  (void)parameter; // Unused parameter
+
+  for (;;) {
     float temperature = dht.readTemperature();
-    
-    // Read humidity
-    float humidity = dht.readHumidity();
-    
-    // Check if readings failed and exit early (if so)
+    float humidity    = dht.readHumidity();
+
     if (isnan(temperature) || isnan(humidity)) {
       Serial.println("Failed to read from DHT sensor!");
     } else {
-      // Print the results to the Serial Monitor
       Serial.print("Temperature: ");
       Serial.print(temperature);
       Serial.print(" °C  ");
@@ -98,24 +188,23 @@ void read_sensor_data(void* parameter) {
       Serial.print(humidity);
       Serial.println(" %");
 
-      // Send data over WebSocket (you can modify the data format as needed)
-      String message = "{\"msg\":[\"" + String(temperature) + "\",\"" + String(humidity) + "\"],\"forward_to\":[\"val_database\"]}";
+      // Construct a JSON message. Adjust the format as needed.
+      String message = "{\"msg\":[\"" + String(temperature) + "\",\"" + String(humidity) +
+                       "\"],\"forward_to\":[\"val_database\"]}";
       client.send(message);
     }
 
-    // Delay for 5 seconds before reading again
-    vTaskDelay(5000 / portTICK_PERIOD_MS); // 5 seconds
+    // Delay for 5 seconds (using FreeRTOS delay).
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
   }
 }
 
-void setup() {
-  Serial.begin(115200);
-  delay(10);
-
-  // Connect to Wi-Fi
+/**
+ * @brief Connects to the Wi-Fi network.
+ */
+void setupWiFi() {
   Serial.println("Connecting to Wi-Fi...");
   WiFi.begin(ssid, password);
-
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
@@ -123,33 +212,54 @@ void setup() {
   Serial.println("\nWi-Fi connected");
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
+}
 
-  // Connect to WebSocket server
+/**
+ * @brief Configures and connects the WebSocket client.
+ */
+void setupWebSocket() {
   Serial.println("Connecting to WebSocket server...");
+
+  // Set callback to handle incoming messages.
   client.onMessage([](WebsocketsMessage message) {
-    parse_post(message.data());
+    parsePost(message.data());
   });
 
+  // Set callback to handle WebSocket events.
   client.onEvent([](WebsocketsEvent event, String data) {
-    if (event == WebsocketsEvent::ConnectionOpened) {
-      Serial.println("WebSocket connection opened");
-    } else if (event == WebsocketsEvent::ConnectionClosed) {
-      Serial.println("WebSocket connection closed");
-    } else if (event == WebsocketsEvent::GotPing) {
-      Serial.println("Received Ping");
-    } else if (event == WebsocketsEvent::GotPong) {
-      Serial.println("Received Pong");
+    switch (event) {
+      case WebsocketsEvent::ConnectionOpened:
+        Serial.println("WebSocket connection opened");
+        break;
+      case WebsocketsEvent::ConnectionClosed:
+        Serial.println("WebSocket connection closed");
+        break;
+      case WebsocketsEvent::GotPing:
+        Serial.println("Received Ping");
+        break;
+      case WebsocketsEvent::GotPong:
+        Serial.println("Received Pong");
+        break;
+      default:
+        break;
     }
   });
 
+  // Connect to the WebSocket server.
   bool connected = client.connect(server_url);
   if (connected) {
     Serial.println("WebSocket client connected");
   } else {
     Serial.println("WebSocket client connection failed");
   }
+}
 
-  // Motor initialization
+/**
+ * @brief Initializes the actuator controllers.
+ *
+ * For ESP32, this function initializes both the fan motor and the pump controller.
+ */
+void setupActuators() {
 #if defined(ESP32)
   if (motor.init() == ESP_OK) {
     Serial.println("Motor controller initialized successfully.");
@@ -157,65 +267,51 @@ void setup() {
     Serial.println("Motor controller initialization failed.");
   }
 
-  // Pump initialization 
   if (pump.init() == ESP_OK) {
     Serial.println("Pump controller initialized successfully.");
   } else {
     Serial.println("Pump controller initialization failed.");
   }
+#elif defined(ESP8266)
+  // Add actuator initialization for ESP8266 as required.
+  Serial.println("Actuator initialization for ESP8266 is not implemented.");
 #endif
+}
+
+/**
+ * @brief Arduino setup function.
+ *
+ * Initializes serial communication, Wi-Fi, WebSocket client, actuators, and the DHT sensor.
+ * It also creates a FreeRTOS task to periodically read sensor data.
+ */
+void setup() {
+  Serial.begin(115200);
+  delay(10);
+
+  setupWiFi();
+  setupWebSocket();
+  setupActuators();
 
   dht.begin();
 
-  // Create the task to read sensor data
-  xTaskCreate(read_sensor_data, "ReadSensorData", 4096, NULL, 1, NULL);
+  // Create a FreeRTOS task for reading sensor data.
+  xTaskCreate(
+    readSensorData,   // Task function.
+    "ReadSensorData", // Task name.
+    4096,             // Stack size.
+    NULL,             // Task input parameter.
+    1,                // Task priority.
+    NULL              // Task handle.
+  );
 }
 
+/**
+ * @brief Arduino main loop function.
+ *
+ * Keeps the WebSocket connection alive. Actuator updates are triggered
+ * immediately upon receiving new messages, so there is no need to update
+ * actuators continuously in the loop.
+ */
 void loop() {
-  static bool motor_is_spinning_ = false;
-  static bool pump_is_spinning_ = false;
-
-  // Keep the WebSocket connection alive
   client.poll();
-
-  // --- Reconnection Logic ---
-  if (!client.connected()) {
-    Serial.println("WebSocket connection lost. Attempting to reconnect...");
-    // Try to reconnect. If the connection fails, wait a bit before retrying.
-    if (client.connect(server_url)) {
-      Serial.println("Reconnected to WebSocket server.");
-    } else {
-      Serial.println("Reconnection failed. Will retry shortly.");
-      delay(5000); // Wait 5 seconds before trying again.
-      return; // Skip the rest of the loop to avoid running control code while disconnected.
-    }
-  }
-  // --- End Reconnection Logic ---
-
-#if defined(ESP32)
-  // Set motor speed according to greenhouse parameters
-  if (gp.fan > 1) {
-    if (!motor_is_spinning_) {
-      motor_is_spinning_ = true;
-      motor.set_speed(255);
-      delay(100);
-    }
-    motor.set_speed(map(gp.fan, 1, 255, 100, 255));
-  } else {
-    motor.stop();
-    motor_is_spinning_ = false;
-  }
-
-  if (gp.pump > 1) {
-    if (!pump_is_spinning_) {
-      pump_is_spinning_ = true;
-      pump.set_speed(255);
-      delay(100);
-    }
-    pump.set_speed(map(gp.pump, 1, 255, 100, 255));
-  } else {
-    pump.stop();
-    pump_is_spinning_ = false;
-  }
-#endif
 }
