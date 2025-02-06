@@ -7,7 +7,7 @@
 ## Installation
 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/w-xter-s-themaybegreenstuff.git
+git clone https://github.com/abbindustrigymnasium/w-xter-s-themaybegreenstuff.git
 cd w-xter-s-themaybegreenstuff
 ```
 
