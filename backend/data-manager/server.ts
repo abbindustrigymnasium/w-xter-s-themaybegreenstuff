@@ -136,6 +136,7 @@ app.post('/createUser', async (req: any, res: any) => {
 });
 
 // Start the Express server
+/// NOTE: If this is not present, the program will fail even though vscode claims it is not required (cors, maybe?)
 const server = app.listen(PORT, () => {
     prettyConsole.logSuccess(`Started website backend server`);
 });

@@ -28,6 +28,13 @@ const routes = [
     component: () => import('layouts/MainLayout.vue'),
   },
   {
+    path: '/user/usercreation',
+    component: () => import('layouts/AdminLayout.vue'),
+    children: [
+      { path: '', component: () => import('pages/UserCreation.vue'), meta: { title: 'User Creation', requiresAuth: true } }
+    ]
+  },
+  {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue'),
     meta: { title: '404 Not Found' }

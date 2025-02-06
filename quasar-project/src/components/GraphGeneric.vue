@@ -246,9 +246,9 @@ export default {
 
 <style scoped>
 .q-pa-md {
-  gap: 20px;
-  border-radius: 10px;
+  padding: 0;
   width: 100%;
+  border-radius: 10px;
 }
 canvas {
   width: 100% !important;
