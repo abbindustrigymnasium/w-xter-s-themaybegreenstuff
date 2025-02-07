@@ -19,6 +19,7 @@
 #if defined(ESP32)
   #include <WiFi.h>                 ///< ESP32 WiFi library.
   #include "motor_controller.h"     ///< Motor controller library for ESP32.
+  #include <ESP32Servo.h>           ///< ESP32 Servo library.
 #elif defined(ESP8266)
   #include <ESP8266WiFi.h>          ///< ESP8266 WiFi library.
   #include "dc_motor_controller.h"  ///< Motor controller library for ESP8266.
@@ -41,10 +42,10 @@ const char* server_url = "ws://10.22.5.5:3000/?type=embedded_device";  ///< WebS
 
 #if defined(ESP32)
   /// Motor controller instance for the fan (connected to pin 23).
-  MotorController motor(23, LEDC_CHANNEL_0, 5000, LEDC_TIMER_8_BIT);
+  MotorController motor(23, LEDC_CHANNEL_2, 5000, LEDC_TIMER_8_BIT);
 
   /// Motor controller instance for the pump (connected to pin 18).
-  MotorController pump(18, LEDC_CHANNEL_1, 5000, LEDC_TIMER_8_BIT);
+  MotorController pump(18, LEDC_CHANNEL_3, 5000, LEDC_TIMER_8_BIT);
 #elif defined(ESP8266)
   // For ESP8266, instantiate the motor controller as needed.
   MotorController motor;  // Placeholder. Actual initialization may vary.
@@ -52,6 +53,10 @@ const char* server_url = "ws://10.22.5.5:3000/?type=embedded_device";  ///< WebS
 
 /// WebSocket client instance.
 WebsocketsClient client;
+
+/// Servo instance
+Servo hatch;
+const uint8_t servo_pin = 32;
 
 /// DHT sensor instance.
 DHT dht(DHTPIN, DHTTYPE);
@@ -125,7 +130,15 @@ void updateActuators() {
     }
     lastPump = gp.pump;
   }
-#endif
+
+  float hatch_val = map(gp.hatch, 1, 255, 0, 90);
+  // Inverting
+  //hatch_val = 180 - hatch_val; 
+  hatch.write(hatch_val);
+#ifdef DEBUG
+  Serial.printldn("Hatch Val: " + String(hatch_val));
+#endif // DEBUG
+#endif // ESP32
 }
 
 /**
@@ -142,19 +155,20 @@ void parsePost(const String& message) {
   if (sscanf(message.c_str(), "%hhu,%hhu,%hhu", &hatch, &fan, &pump) == 3) {
     uint8_t newFan  = constrain(fan, 0, 255);
     uint8_t newPump = constrain(pump, 0, 255);
-    gp.hatch = constrain(hatch, 0, 255);
+    uint8_t newHatch = constrain(hatch, 0, 255);
 
 #ifdef DEBUG
     Serial.println("Received: " + message);
-    Serial.println("Hatch: " + String(gp.hatch));
+    Serial.println("Hatch: " + String(newHatch));
     Serial.println("Fan:   " + String(newFan));
     Serial.println("Pump:  " + String(newPump));
 #endif
 
-    // Update actuators only if the values have changed.
-    if (newFan != gp.fan || newPump != gp.pump) {
+    // Update actuators only if the values have changed. (should be redundant since the server won't send duplicate messages)
+    if (newFan != gp.fan || newPump != gp.pump || newHatch != gp.hatch) {
       gp.fan  = newFan;
       gp.pump = newPump;
+      gp.hatch = newHatch;
       updateActuators();
     }
   } else {
@@ -291,6 +305,7 @@ void setup() {
   setupWiFi();
   setupWebSocket();
   setupActuators();
+  hatch.attach(servo_pin, 500, 2500); 
 
   dht.begin();
 

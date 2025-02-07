@@ -168,7 +168,8 @@ export default {
     },
 
     setupWebSocket() {
-      this.socket = new WebSocket('ws://localhost:3000?type=graph_component');
+      const hostIP = window.location.hostname;
+      this.socket = new WebSocket(`ws://${hostIP}:3000?type=graph_component`);
 
       this.socket.onopen = () => {
         console.log('WebSocket connected');
